@@ -1,0 +1,105 @@
+# Builds the standard Linux edition only (x64 .deb + portable tarball), for
+# this fork. Manual run, or a push to ci/package-linux: no publish to
+# dl.baocode.dev, no release environment secrets. Upstream full releases
+# (x64 and arm64, both editions) stay on release.yml.
+#
+# ubuntu-22.04 is the oldest Ubuntu the package is built on: its glibc and
+# GTK are what the package runs on from there up (same as release.yml).
+name: Package Linux
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ci/package-linux
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.5
+
+jobs:
+  check:
+    name: Check the version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Match pubspec.yaml and lib/update/version.dart
+        run: |
+          version=$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml)
+          marketing=${version%%+*}
+          code=$(sed -n "s/^const appVersionString = '\(.*\)';/\1/p" lib/update/version.dart)
+          echo "pubspec.yaml: $version ($marketing), lib/update/version.dart: $code"
+          if [ "$version" != "$code" ]; then
+            echo "::error::lib/update/version.dart says $code, pubspec.yaml $version: run tool/bump_version.dart"
+            exit 1
+          fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$ ]]; then
+            echo "::error::$version is not x.y.z+build"
+            exit 1
+          fi
+
+  remote:
+    name: Remote server
+    needs: check
+    uses: ./.github/workflows/remote.yml
+
+  linux:
+    name: Build for Linux (standard)
+    needs: [check, remote]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Install GTK's build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev \
+            liblzma-dev libstdc++-12-dev xvfb dbus-x11
+      - uses: actions/download-artifact@v4
+        with:
+          name: remote
+          path: build/remote
+      - name: Build
+        run: flutter build linux --release
+      - name: Package the .deb and the tarball
+        run: |
+          sh tool/package_linux_deb.sh
+          deb=(build/installers/BaoCursor-*.deb)
+          dpkg-deb --info "${deb[0]}"
+          extracted="$RUNNER_TEMP/deb"
+          dpkg-deb -x "${deb[0]}" "$extracted"
+          grep -qx 'Name=BaoCursor' "$extracted/usr/share/applications/baocursor.desktop"
+          test -x "$extracted/opt/baocode/baocode"
+          test -x "$extracted/usr/bin/baocursor"
+      - name: Install the package and launch it
+        run: |
+          sudo apt-get install -y ./build/installers/BaoCursor-*.deb
+          log="$RUNNER_TEMP/launch.log"
+          # A missing data dir is asked about, and the app waits there.
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/runtime"
+          mkdir -m 700 "$XDG_RUNTIME_DIR"
+          mkdir "$RUNNER_TEMP/launch-data"
+          # The process name stays baocode (linux/CMakeLists.txt BINARY_NAME).
+          BAOCODE_DATA_DIR="$RUNNER_TEMP/launch-data" \
+            dbus-run-session -- xvfb-run -a /opt/baocode/baocode > "$log" 2>&1 &
+          sleep 15
+          if ! pgrep -x baocode > /dev/null; then
+            cat "$log"
+            echo "::error::BaoCursor exited within 15 seconds of launch"
+            exit 1
+          fi
+          echo "BaoCursor is running after 15 seconds"
+          pkill -x baocode || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          if-no-files-found: error
+          path: |
+            build/installers/BaoCursor-*.deb
+            build/installers/BaoCursor-*.tar.gz

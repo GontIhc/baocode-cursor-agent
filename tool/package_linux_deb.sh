@@ -13,6 +13,15 @@
 #                                           its files end in -channel, and it
 #                                           depends on WebKitGTK, for its
 #                                           login window
+#
+# Installers are BaoCursor-<version>-linux-<arch>.deb and .tar.gz, and the
+# desktop entry's Name is BaoCursor (same product name as the macOS
+# BaoCursor.app installers). The executable stays `baocode`: Flutter's Linux
+# target takes that from linux/CMakeLists.txt BINARY_NAME, and it does not
+# have to be baocode to build, but the dpkg package name `baocode` and
+# /opt/baocode are what lib/update/installer_io.dart checks before it will
+# apply an update. /usr/bin/baocursor and /usr/bin/baocode both run it.
+# StartupWMClass stays dev.baocode.desktop (APPLICATION_ID).
 set -eu
 
 edition=
@@ -34,7 +43,7 @@ esac
 bundle="$root/build/linux/$arch/release/bundle"
 
 if [ ! -x "$bundle/baocode" ]; then
-  echo "No bundle at $bundle. Run: flutter build linux --release" >&2
+  echo "No bundle at $bundle (expected executable baocode). Run: flutter build linux --release" >&2
   exit 1
 fi
 
@@ -55,20 +64,22 @@ mkdir -p "$stage/opt/baocode" \
 
 cp -a "$bundle/." "$stage/opt/baocode/"
 cp "$root/assets/branding/app_icon.png" \
-  "$stage/usr/share/icons/hicolor/128x128/apps/baocode.png"
+  "$stage/usr/share/icons/hicolor/128x128/apps/baocursor.png"
 
-cat > "$stage/usr/bin/baocode" << 'EOF'
+cat > "$stage/usr/bin/baocursor" << 'EOF'
 #!/bin/sh
 exec /opt/baocode/baocode "$@"
 EOF
-chmod 755 "$stage/usr/bin/baocode"
+chmod 755 "$stage/usr/bin/baocursor"
+# The historical command name, same binary.
+cp "$stage/usr/bin/baocursor" "$stage/usr/bin/baocode"
 
-cat > "$stage/usr/share/applications/baocode.desktop" << 'EOF'
+cat > "$stage/usr/share/applications/baocursor.desktop" << 'EOF'
 [Desktop Entry]
-Name=BaoCode
-Comment=Desktop app for Claude Code
-Exec=baocode %U
-Icon=baocode
+Name=BaoCursor
+Comment=Desktop shell for Cursor Agent
+Exec=baocursor %U
+Icon=baocursor
 Terminal=false
 Type=Application
 Categories=Development;
@@ -84,15 +95,15 @@ Section: devel
 Priority: optional
 Architecture: ${package_arch}
 Depends: libgtk-3-0, libblkid1, liblzma5${webkit}
-Maintainer: BaoCode <noreply@baocode.dev>
+Maintainer: BaoCursor <noreply@baocode.dev>
 Homepage: https://baocode.dev
-Description: BaoCode desktop for Linux
- A desktop UI for Claude Code, with a fast IDE built in.
+Description: BaoCursor desktop for Linux
+ A desktop shell for the Cursor Agent CLI, with a fast IDE built in.
 EOF
 
 out="$root/build/installers"
 mkdir -p "$out"
-name="BaoCode-${marketing}-linux-${package_arch}${edition}"
+name="BaoCursor-${marketing}-linux-${package_arch}${edition}"
 dpkg-deb --build --root-owner-group "$stage" "$out/$name.deb"
 tar -C "$bundle" -czf "$out/$name.tar.gz" .
 echo "Wrote $out/$name.deb"

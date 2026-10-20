@@ -66,9 +66,11 @@ To build what is released, into `build/installers/`:
 ```sh
 dart run tool/build_macos.dart            # BaoCursor-<version>-{arm64,x64}.dmg and BaoCursor-<version>-mac-{arm64,x64}.zip
 dart run tool/build_windows.dart          # BaoCode-<version>-setup.exe (needs Inno Setup; name may still say BaoCode)
-flutter build linux --release && sh tool/package_linux_deb.sh   # baocode package on Linux
+flutter build linux --release && sh tool/package_linux_deb.sh   # BaoCursor-<version>-linux-{amd64,arm64}.deb (executable stays baocode)
 dart run tool/build_remote_server.dart    # the SSH remote server, for Linux x64 and arm64
 ```
+
+**Package Linux** (Actions → Package Linux, or a push to `ci/package-linux`) builds the standard x64 edition and uploads a `linux` artifact (`BaoCursor-<version>-linux-amd64.deb` and `.tar.gz`). It does not publish to `dl.baocode.dev`. See [CONTRIBUTING.md](CONTRIBUTING.md#linux-package-github-actions).
 
 The full test suite is slow; run the tests for what you changed, for example `flutter test test/update`.
 

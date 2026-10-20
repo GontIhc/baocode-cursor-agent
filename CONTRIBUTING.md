@@ -52,6 +52,16 @@ To build installable macOS DMGs without running the full **Release** workflow (W
 
 These builds are **ad-hoc signed** when this fork has no Apple Developer ID secrets. On your Mac, if Gatekeeper blocks the app, use **Open Anyway** in **System Settings → Privacy & Security**.
 
+## Linux package (GitHub Actions)
+
+To build an installable Linux package without the full **Release** workflow (no publish to `dl.baocode.dev`):
+
+1. Open **Actions** → **Package Linux** → **Run workflow** (branch `main`), or push the branch `ci/package-linux`.
+2. When the run finishes, download the **`linux`** artifact.
+3. Install `BaoCursor-<version>-linux-amd64.deb` (x64), or unpack `BaoCursor-<version>-linux-amd64.tar.gz`.
+
+The workflow builds the standard edition on `ubuntu-22.04` (x64 only). The on-disk executable stays `baocode` (`linux/CMakeLists.txt` `BINARY_NAME`): the dpkg package name and `/opt/baocode` are what the in-app updater checks. Installer filenames and the desktop entry name are BaoCursor. `/usr/bin/baocursor` and `/usr/bin/baocode` both start that binary.
+
 ## Tests
 
 The full suite is slow; run tests for what you changed, for example:

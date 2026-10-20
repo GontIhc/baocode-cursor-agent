@@ -45,6 +45,8 @@ flutter run -d macos
 
 macOS 安装包：`dart run tool/build_macos.dart` → `BaoCursor-<version>-{arm64,x64}.dmg`。
 
+Linux 安装包：Actions → **Package Linux**（或推送分支 `ci/package-linux`），下载名为 `linux` 的产物：`BaoCursor-<version>-linux-amd64.deb`。可执行文件仍是 `baocode`。
+
 ## 许可证
 
 GPL-3.0-or-later，与 BaoCode 相同。见 [LICENSE](LICENSE)。

@@ -8,8 +8,8 @@
 //     --macos-x64 build/installers/BaoCode-1.2.0-mac-x64.zip \
 //     [--dmg-arm64 build/installers/BaoCode-1.2.0-arm64.dmg] \
 //     [--dmg-x64 build/installers/BaoCode-1.2.0-x64.dmg] \
-//     [--linux-x64 build/installers/BaoCode-1.2.0-linux-amd64.deb] \
-//     [--linux-arm64 build/installers/BaoCode-1.2.0-linux-arm64.deb] \
+//     [--linux-x64 build/installers/BaoCursor-1.2.0-linux-amd64.deb] \
+//     [--linux-arm64 build/installers/BaoCursor-1.2.0-linux-arm64.deb] \
 //     [--notes-en <text or file>] [--notes-zh <text or file>] \
 //     [--minimum-version 1.0.0] [--version 1.2.0+12] \
 //     [--manifest build/installers/latest.json]
