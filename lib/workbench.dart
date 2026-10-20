@@ -658,6 +658,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     if (!mounted) return;
     await offerOldDataDirRemoval(context);
     if (!mounted) return;
+    if (_workspace.kernelStartupNotice case final notice?) {
+      _workspace.kernelStartupNotice = null;
+      _notifications.notify(IdeSeverity.info, notice);
+    }
+    if (!mounted) return;
     await _startTips();
   }
 

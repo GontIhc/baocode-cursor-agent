@@ -5,3 +5,9 @@ Future<CursorAgentTransport> startCursorAgent(CursorAgentLaunch launch) async =>
       'Cursor Agent runs in the desktop app',
       detail: 'The browser cannot start local processes.',
     );
+
+abstract final class CursorAgentProcess {
+  static Future<void> stopAll() async {}
+
+  static Future<void> reapLeftovers() async {}
+}

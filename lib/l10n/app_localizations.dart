@@ -9435,6 +9435,39 @@ abstract class AppLocalizations {
   /// **'None found yet: Claude Code is downloaded as the first conversation starts.'**
   String get claudePathMissing;
 
+  /// No description provided for @generalSettingsAgentKernel.
+  String get generalSettingsAgentKernel;
+
+  /// No description provided for @generalSettingsAgentKernelDescription.
+  String get generalSettingsAgentKernelDescription;
+
+  /// No description provided for @generalSettingsAgentKernelLabel.
+  String generalSettingsAgentKernelLabel(String name);
+
+  /// No description provided for @cursorAgentPathSetting.
+  String get cursorAgentPathSetting;
+
+  /// No description provided for @cursorAgentPathSettingDescription.
+  String get cursorAgentPathSettingDescription;
+
+  /// No description provided for @cursorAgentPathSettingHint.
+  String get cursorAgentPathSettingHint;
+
+  /// No description provided for @cursorAgentPathClear.
+  String get cursorAgentPathClear;
+
+  /// No description provided for @cursorAgentPathChecking.
+  String get cursorAgentPathChecking;
+
+  /// No description provided for @cursorAgentPathInUse.
+  String cursorAgentPathInUse(String path);
+
+  /// No description provided for @cursorAgentPathMissing.
+  String get cursorAgentPathMissing;
+
+  /// No description provided for @cursorAgentStartupFallback.
+  String get cursorAgentStartupFallback;
+
   /// No description provided for @generalSettingsIdeWindows.
   ///
   /// In en, this message translates to:

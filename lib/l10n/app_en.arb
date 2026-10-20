@@ -4274,6 +4274,31 @@
     }
   },
   "claudePathMissing": "None found yet: Claude Code is downloaded as the first conversation starts.",
+  "generalSettingsAgentKernel": "Default kernel",
+  "generalSettingsAgentKernelDescription": "Which agent new conversations start with. You can still switch before the first message. (state.json kernel)",
+  "generalSettingsAgentKernelLabel": "Default kernel: {name}",
+  "@generalSettingsAgentKernelLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "cursorAgentPathSetting": "Path",
+  "cursorAgentPathSettingDescription": "Empty: look for `agent` on PATH, then in ~/.local/bin. A path: always that binary. (cursorAgent.path)",
+  "cursorAgentPathSettingHint": "Automatic",
+  "cursorAgentPathClear": "Clear",
+  "cursorAgentPathChecking": "Checking…",
+  "cursorAgentPathInUse": "In use: {path}",
+  "@cursorAgentPathInUse": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "cursorAgentPathMissing": "Not found: install the Cursor CLI (curl https://cursor.com/install -fsS | bash), or set a path above. New conversations use Claude Code until then.",
+  "cursorAgentStartupFallback": "Cursor Agent CLI (`agent`) was not found. New conversations will use Claude Code. Install the CLI from Settings → General → Cursor Agent, or pick Cursor Agent in the composer once it is installed.",
   "generalSettingsIdeWindows": "Fast Ide Windows",
   "generalSettingsIdeWindowsDescription": "Where the Fast Ide opens: in the main window in place of the chat, one folder at a time, or in windows of its own, one per folder (New Window, ⇧⌘N / Ctrl+Shift+N, opens an empty one). Applies at once. (window.ideWindows)",
   "generalSettingsIdeWindowsSeparate": "Separate windows",

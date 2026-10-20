@@ -10,6 +10,8 @@ import '../../ide/ide_menu.dart';
 import '../../ide/ide_notifications.dart' show IdeSeverity;
 import '../../kernel/claude_code/claude_core_setting.dart';
 import '../../kernel/claude_code/claude_path_setting.dart';
+import '../../kernel/cursor_agent/cursor_agent_path_setting.dart';
+import '../../workspace/workspace.dart';
 import '../../kernel/commit_attribution.dart';
 import '../../kernel/prompt_suggestions.dart';
 import '../../chat/composer/composer_polish.dart' show ComposerPolishSetting;
@@ -48,6 +50,8 @@ class GeneralSettingsPage extends StatelessWidget {
     this.settings,
     this.tips,
     this.claudeStatus,
+    this.cursorAgentStatus,
+    this.workspace,
   });
 
   /// settings.json; none under test, where choices are not kept.
@@ -56,6 +60,13 @@ class GeneralSettingsPage extends StatelessWidget {
   /// The Claude Code that runs now ([localClaudeStatus]); none under
   /// test and on the web, where the path is not shown.
   final Future<LocalClaudeStatus?> Function()? claudeStatus;
+
+  /// The Cursor Agent CLI on this machine ([localCursorAgentStatus]); none
+  /// under test and on the web.
+  final Future<LocalCursorAgentStatus?> Function()? cursorAgentStatus;
+
+  /// The workspace, for the default agent kernel; none under test.
+  final Workspace? workspace;
 
   /// The feature tips: those not on yet are listed first.
   final FeatureTipsController? tips;
@@ -388,6 +399,62 @@ class GeneralSettingsPage extends StatelessWidget {
                 ),
               ],
             ),
+            if (workspace case final workspace? when !kIsWeb)
+              SettingsGroup(
+                title: 'Agent kernel',
+                children: [
+                  SettingsCard(
+                    children: [
+                      ListenableBuilder(
+                        listenable: workspace,
+                        builder: (context, _) {
+                          final current = workspace.preferredKernel;
+                          final shown = current.label;
+                          return SettingsRow(
+                            label: l10n.generalSettingsAgentKernel,
+                            description:
+                                l10n.generalSettingsAgentKernelDescription,
+                            trailing: SettingsDropdown(
+                              current: shown,
+                              semanticLabel: l10n
+                                  .generalSettingsAgentKernelLabel(shown),
+                              entries: () => [
+                                for (final kernel in workspace.kernels)
+                                  IdeMenuAction(
+                                    kernel.label,
+                                    checked: kernel == current,
+                                    onSelected: () =>
+                                        workspace.preferredKernel = kernel,
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            if (cursorAgentStatus case final cursorAgentStatus? when !kIsWeb)
+              SettingsGroup(
+                title: 'Cursor Agent',
+                children: [
+                  SettingsCard(
+                    children: [
+                      _CursorAgentPathSetting(
+                        path: CursorAgentPathSetting.parse(
+                          settings?[CursorAgentPathSetting.settingKey],
+                        ),
+                        status: cursorAgentStatus,
+                        onChanged: (path) => _write(
+                          CursorAgentPathSetting.settingKey,
+                          path.isEmpty ? null : path,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             if (claudeStatus case final claudeStatus? when !kIsWeb)
               SettingsGroup(
                 title: 'Claude Code',
@@ -684,6 +751,89 @@ class _ContextMenuSettingState extends State<_ContextMenuSetting> {
 
 /// The Claude Code to run: the path set (none for the newest found), and
 /// under it the one that runs now, read again as the path changes.
+/// The `agent` binary to run: the path set (none to search `PATH`), and
+/// under it what would run now.
+class _CursorAgentPathSetting extends StatefulWidget {
+  const _CursorAgentPathSetting({
+    required this.path,
+    required this.status,
+    required this.onChanged,
+  });
+
+  final String? path;
+  final Future<LocalCursorAgentStatus?> Function() status;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_CursorAgentPathSetting> createState() =>
+      _CursorAgentPathSettingState();
+}
+
+class _CursorAgentPathSettingState extends State<_CursorAgentPathSetting> {
+  late Future<LocalCursorAgentStatus?> _status = widget.status();
+
+  @override
+  void didUpdateWidget(_CursorAgentPathSetting old) {
+    super.didUpdateWidget(old);
+    if (old.path != widget.path) _status = widget.status();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SettingsRow(
+      label: l10n.cursorAgentPathSetting,
+      description: l10n.cursorAgentPathSettingDescription,
+      below: [
+        FutureBuilder(
+          future: _status,
+          builder: (context, snapshot) {
+            final (text, failed) = switch (snapshot.data) {
+              _ when snapshot.connectionState != ConnectionState.done => (
+                l10n.cursorAgentPathChecking,
+                false,
+              ),
+              LocalCursorAgentFound(:final path) => (
+                l10n.cursorAgentPathInUse(path),
+                false,
+              ),
+              LocalCursorAgentMissing() => (l10n.cursorAgentPathMissing, false),
+              LocalCursorAgentFailed(:final message) => (message, true),
+              null => ('', false),
+            };
+            if (text.isEmpty) return const SizedBox.shrink();
+            return SelectableText(
+              text,
+              style: failed
+                  ? SettingsText.path.copyWith(
+                      color: themeColors['errorForeground'],
+                    )
+                  : SettingsText.path,
+            );
+          },
+        ),
+      ],
+      trailing: SettingsButtons(
+        children: [
+          SettingsTextField(
+            value: widget.path ?? '',
+            hint: l10n.cursorAgentPathSettingHint,
+            semanticLabel: 'Cursor Agent ${l10n.cursorAgentPathSetting}',
+            width: 220,
+            onSubmitted: widget.onChanged,
+          ),
+          if (widget.path != null && widget.path!.isNotEmpty)
+            IdeButton(
+              label: l10n.cursorAgentPathClear,
+              secondary: true,
+              onPressed: () => widget.onChanged(''),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ClaudePathSetting extends StatefulWidget {
   const _ClaudePathSetting({
     required this.path,

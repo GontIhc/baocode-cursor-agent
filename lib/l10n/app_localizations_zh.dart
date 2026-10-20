@@ -5482,6 +5482,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get claudePathMissing => '尚未找到：开始第一个对话时会自动下载 Claude Code。';
 
   @override
+  String get generalSettingsAgentKernel => '默认内核';
+
+  @override
+  String get generalSettingsAgentKernelDescription =>
+      '新对话默认使用的 Agent。在第一条消息发送前仍可在输入框切换。（state.json kernel）';
+
+  @override
+  String generalSettingsAgentKernelLabel(String name) {
+    return '默认内核：$name';
+  }
+
+  @override
+  String get cursorAgentPathSetting => '路径';
+
+  @override
+  String get cursorAgentPathSettingDescription =>
+      '留空则在 PATH 和 ~/.local/bin 中查找 `agent`；填写路径则固定使用该二进制。（cursorAgent.path）';
+
+  @override
+  String get cursorAgentPathSettingHint => '自动';
+
+  @override
+  String get cursorAgentPathClear => '清除';
+
+  @override
+  String get cursorAgentPathChecking => '正在检查…';
+
+  @override
+  String cursorAgentPathInUse(String path) {
+    return '当前使用：$path';
+  }
+
+  @override
+  String get cursorAgentPathMissing =>
+      '未找到：请安装 Cursor CLI（curl https://cursor.com/install -fsS | bash），或在上方填写路径。在此之前新对话将使用 Claude Code。';
+
+  @override
+  String get cursorAgentStartupFallback =>
+      '未找到 Cursor Agent CLI（`agent`）。新对话将使用 Claude Code。请在 设置 → 通用 → Cursor Agent 安装 CLI，或安装后在输入框中选择 Cursor Agent。';
+
+  @override
   String get generalSettingsIdeWindows => 'Fast Ide 窗口';
 
   @override

@@ -5856,6 +5856,47 @@ class AppLocalizationsEn extends AppLocalizations {
       'None found yet: Claude Code is downloaded as the first conversation starts.';
 
   @override
+  String get generalSettingsAgentKernel => 'Default kernel';
+
+  @override
+  String get generalSettingsAgentKernelDescription =>
+      'Which agent new conversations start with. You can still switch before the first message. (state.json kernel)';
+
+  @override
+  String generalSettingsAgentKernelLabel(String name) {
+    return 'Default kernel: $name';
+  }
+
+  @override
+  String get cursorAgentPathSetting => 'Path';
+
+  @override
+  String get cursorAgentPathSettingDescription =>
+      'Empty: look for `agent` on PATH, then in ~/.local/bin. A path: always that binary. (cursorAgent.path)';
+
+  @override
+  String get cursorAgentPathSettingHint => 'Automatic';
+
+  @override
+  String get cursorAgentPathClear => 'Clear';
+
+  @override
+  String get cursorAgentPathChecking => 'Checking…';
+
+  @override
+  String cursorAgentPathInUse(String path) {
+    return 'In use: $path';
+  }
+
+  @override
+  String get cursorAgentPathMissing =>
+      'Not found: install the Cursor CLI (curl https://cursor.com/install -fsS | bash), or set a path above. New conversations use Claude Code until then.';
+
+  @override
+  String get cursorAgentStartupFallback =>
+      'Cursor Agent CLI (`agent`) was not found. New conversations will use Claude Code. Install the CLI from Settings → General → Cursor Agent, or pick Cursor Agent in the composer once it is installed.';
+
+  @override
   String get generalSettingsIdeWindows => 'Fast Ide Windows';
 
   @override

@@ -2,6 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
+import '../../platform/child_process_registry.dart';
+import '../../platform/data_dir.dart';
 import 'cursor_agent_locator.dart';
 import 'cursor_agent_transport.dart';
 
@@ -9,12 +13,10 @@ import 'cursor_agent_transport.dart';
 /// stderr is kept for the failure report. A [CursorAcp.transportExit]
 /// notification is added once the process and its stdout are both done.
 /// That notification is local: it is not part of ACP.
-///
-/// TODO: processes left behind by a crash are not reaped. Claude Code's
-/// transport keeps a pid file for that; this first pass only kills the
-/// child it still holds.
 class CursorAgentProcess implements CursorAgentTransport {
   CursorAgentProcess._(this._process, {required this.cwd, this.executable}) {
+    _live.add(this);
+    unawaited(registry.add(_process.pid));
     _process.stdout
         .transform(_decoder)
         .transform(const LineSplitter())
@@ -30,7 +32,41 @@ class CursorAgentProcess implements CursorAgentTransport {
   /// and is kept as a non-protocol line, the way Claude's transport does.
   static const _decoder = Utf8Decoder(allowMalformed: true);
 
+  /// Where the running processes are kept track of across runs.
+  @visibleForTesting
+  static CursorAgentProcessRegistry registry = CursorAgentProcessRegistry(
+    file: File(DataDirectory.current.processRegistryFile('cursor-agent')),
+  );
+
+  /// The processes this run of the app started and that still run.
+  static final Set<CursorAgentProcess> _live = {};
+
+  /// Ends every Cursor Agent process this run started, and waits (up to
+  /// [timeout] each) for them to go: done as the app quits.
+  static Future<void> stopAll({
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    await Future.wait([
+      for (final transport in [..._live]) transport._stop(timeout),
+    ]);
+    await registry.flush();
+  }
+
+  /// Ends the processes an earlier run left behind; see
+  /// [CursorAgentProcessRegistry].
+  static Future<void> reapLeftovers() => registry.reaped;
+
+  Future<void> _stop(Duration timeout) async {
+    close();
+    try {
+      await _process.exitCode.timeout(timeout);
+    } on TimeoutException {
+      _process.kill(ProcessSignal.sigkill);
+    }
+  }
+
   static Future<CursorAgentTransport> start(CursorAgentLaunch launch) async {
+    await registry.reaped;
     if (!Directory(launch.cwd).existsSync()) {
       throw CursorAgentFolderGone(launch.cwd);
     }
@@ -117,6 +153,8 @@ class CursorAgentProcess implements CursorAgentTransport {
 
   void _exited(int code) {
     _exitCode = code;
+    _live.remove(this);
+    unawaited(registry.remove(_process.pid));
     _finish();
   }
 
@@ -163,7 +201,42 @@ class CursorAgentProcess implements CursorAgentTransport {
     if (_closed) return;
     _closed = true;
     unawaited(_process.stdin.close().catchError((_) {}));
-    _process.kill();
+    if (Platform.isWindows) {
+      unawaited(_endTree());
+    } else {
+      _process.kill();
+    }
+  }
+
+  /// Windows ends a killed process alone, and the MCP servers it started
+  /// go on without it: given a moment to end them itself, its input
+  /// closed, then ended with all it started.
+  Future<void> _endTree() async {
+    final ended = await _process.exitCode
+        .timeout(const Duration(seconds: 1))
+        .then((_) => true, onError: (Object _) => false);
+    if (ended) return;
+    try {
+      await Process.run('taskkill', ['/pid', '${_process.pid}', '/T', '/F']);
+    } on ProcessException {
+      _process.kill();
+    }
+  }
+}
+
+/// The Cursor Agent processes the app has running
+/// (`cursor-agent-processes.json`); see [ChildProcessRegistry].
+class CursorAgentProcessRegistry extends ChildProcessRegistry {
+  CursorAgentProcessRegistry({
+    required super.file,
+    super.ownPid,
+    super.lookup,
+    super.signal,
+  }) : super(recognizes: _isCursorAgent);
+
+  static bool _isCursorAgent(String command) {
+    final lower = command.toLowerCase();
+    return lower.contains('agent') && lower.contains('acp');
   }
 }
 
