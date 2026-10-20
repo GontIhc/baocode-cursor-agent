@@ -1026,7 +1026,7 @@ void main() {
     addTearDown(() => OpenInEditorButton.launch = openInEditor);
     final workspace = await pumpApp(tester);
     // The Fast Ide, until another is picked.
-    expect(find.bySemanticsLabel('Open in Fast Ide'), findsOneWidget);
+    expect(find.bySemanticsLabel('Open in BaoCursor'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Choose editor'));
     await tester.pump(const Duration(milliseconds: 200));
     await tester.tap(find.text('Zed'));
@@ -1040,11 +1040,11 @@ void main() {
     // The Fast Ide is one of the choices: kept, and opened as the layout.
     await tester.tap(find.bySemanticsLabel('Choose editor'));
     await tester.pump(const Duration(milliseconds: 200));
-    await tester.tap(find.text('Fast Ide'));
+    await tester.tap(find.text('BaoCursor'));
     await tester.pump(const Duration(milliseconds: 200));
     expect(workspace.preferredEditor, Editor.fastIde);
     expect(workspace.layout, WorkspaceLayout.chat);
-    await tester.tap(find.bySemanticsLabel('Open in Fast Ide'));
+    await tester.tap(find.bySemanticsLabel('Open in BaoCursor'));
     await tester.pump();
     expect(workspace.layout, WorkspaceLayout.ide);
     expect(opened, [Editor.zed]);
@@ -1111,7 +1111,7 @@ void main() {
     // Left of the editor button.
     expect(
       tester.getTopRight(pin).dx,
-      lessThan(tester.getTopLeft(find.bySemanticsLabel('Open in Fast Ide')).dx),
+      lessThan(tester.getTopLeft(find.bySemanticsLabel('Open in BaoCursor')).dx),
     );
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -1422,7 +1422,7 @@ void main() {
       ..openIdeFolder('/tmp/a')
       ..select(keptThread(workspace, 'a1'));
     await tester.pump();
-    await pickFromMenu(tester, 'b', 'Open in Fast Ide');
+    await pickFromMenu(tester, 'b', 'Open in BaoCursor');
     expect(workspace.layout, WorkspaceLayout.ide);
     expect(workspace.ideFolder, '/tmp/b');
     workspace.layout = WorkspaceLayout.chat;
@@ -1430,7 +1430,7 @@ void main() {
     // With the current agent's chat there, when it is the project's.
     workspace.select(keptThread(workspace, 'a1'));
     await tester.pump();
-    await pickFromMenu(tester, 'a', 'Open in Fast Ide');
+    await pickFromMenu(tester, 'a', 'Open in BaoCursor');
     expect(workspace.ideFolder, '/tmp/a');
     expect(workspace.ideChat('/tmp/a'), same(keptThread(workspace, 'a1')));
     workspace.layout = WorkspaceLayout.chat;

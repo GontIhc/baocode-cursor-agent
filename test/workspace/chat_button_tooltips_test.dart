@@ -80,7 +80,7 @@ void main() {
           'Search (⇧⌘P)',
           'Settings (⌘,)',
           // The title bar's.
-          'Open in Fast Ide (⌃⌘I)',
+          'Open in BaoCursor (⌃⌘I)',
           // The composer's.
           'Set Mode (⌘.)',
           'Pick Model (⌥⌘.)',

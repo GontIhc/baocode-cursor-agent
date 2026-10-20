@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:baocode/chat/chat_models.dart';
 import 'package:baocode/kernel/agent_kernel.dart';
 import 'package:baocode/kernel/cursor_agent/cursor_agent_kernel.dart';
+import 'package:baocode/kernel/cursor_agent/cursor_agent_model_setting.dart';
+import 'package:baocode/kernel/cursor_agent/cursor_agent_models.dart';
+import 'package:baocode/kernel/cursor_agent/cursor_agent_sessions.dart';
 import 'package:baocode/kernel/cursor_agent/cursor_agent_transport.dart';
 import 'package:baocode/kernel/kernel_event.dart';
 import 'package:baocode/kernel/kernel_registry.dart';
@@ -12,14 +15,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('Cursor Agent is the only user-facing kernel', () {
+    // test/flutter_test_config.dart replaces KernelRegistry.all with mocks
+    // before any test. The descriptor the app ships is still Cursor Agent.
     expect(KernelRegistry.cursorAgent.id, 'cursor-agent');
-    expect(KernelRegistry.all, [KernelRegistry.cursorAgent]);
     expect(KernelRegistry.claudeCode.id, 'claude-code');
     final kernel = KernelRegistry.cursorAgent.create(
       const KernelContext(cwd: '/work'),
     );
     expect(kernel, isA<CursorAgentKernel>());
     expect(kernel, isA<SelectsMode>());
+    expect(kernel, isA<SelectsModel>());
+    expect(KernelRegistry.cursorAgent.catalog, isA<CursorAgentCatalog>());
     kernel.dispose();
   });
 
@@ -58,7 +64,7 @@ void main() {
     final params = initialize['params'] as Map;
     expect(params['protocolVersion'], 1);
     expect((initialize['params'] as Map)['clientInfo'], {
-      'name': 'baocode',
+      'name': 'baocursor',
       'version': '1.5.0',
     });
     final auth = transport.written.firstWhere(
@@ -176,7 +182,10 @@ void main() {
       'outcome': {
         'outcome': 'answered',
         'answers': [
-          {'questionId': 'q1', 'selectedOptionIds': ['a', 'b']},
+          {
+            'questionId': 'q1',
+            'selectedOptionIds': ['a', 'b'],
+          },
         ],
       },
     });
@@ -214,10 +223,7 @@ void main() {
       (message) => message['method'] == null && message.containsKey('result'),
     );
     expect(response['result'], {
-      'outcome': {
-        'outcome': 'accepted',
-        'planUri': 'file:///tmp/plan.md',
-      },
+      'outcome': {'outcome': 'accepted', 'planUri': 'file:///tmp/plan.md'},
     });
     kernel.dispose();
   });
@@ -272,6 +278,164 @@ void main() {
     expect(events.whereType<TurnEnded>().single.interrupted, isTrue);
     kernel.dispose();
   });
+
+  test('fallback model menu passes --model and restarts', () async {
+    final launches = <String?>[];
+    final transport = ScriptedCursorTransport(onPrompt: (_, _) {});
+    final kernel = CursorAgentKernel(
+      _descriptor,
+      const KernelContext(cwd: '/work'),
+      start: (launch) async {
+        launches.add(launch.model);
+        return transport;
+      },
+    );
+    kernel.prepare();
+    await pumpEventQueue();
+    expect(launches, [null]);
+    expect(kernel.model.options.map((option) => option.id), [
+      CursorAgentModels.cliDefaultId,
+      CursorAgentModels.otherId,
+    ]);
+    expect(kernel.switchRestarts('composer-2.5'), isTrue);
+
+    String? saved;
+    List<String>? recent;
+    CursorAgentModelSetting.persist = (model, models) {
+      saved = model;
+      recent = models;
+    };
+    addTearDown(() {
+      CursorAgentModelSetting.persist = (_, _) {};
+    });
+    kernel.model.select('composer-2.5');
+    await pumpEventQueue();
+
+    expect(launches, [null, 'composer-2.5']);
+    expect(kernel.model.selected, 'composer-2.5');
+    expect(saved, 'composer-2.5');
+    expect(recent, ['composer-2.5']);
+    kernel.dispose();
+  });
+
+  test('a resumed CLI chat omits --model until the user picks', () async {
+    final launches = <String?>[];
+    final transport = ScriptedCursorTransport(
+      onPrompt: (_, _) {},
+      loadSession: true,
+    );
+    CursorAgentModelSetting.current = () => 'composer-2.5';
+    addTearDown(() => CursorAgentModelSetting.current = () => null);
+    final kernel = CursorAgentKernel(
+      _descriptor,
+      KernelContext(
+        cwd: '/work',
+        resume: SessionRecord(
+          id: 'cli-session',
+          title: 'Old',
+          updatedAt: DateTime.utc(2026, 1, 1),
+          cwd: '/work',
+        ),
+      ),
+      start: (launch) async {
+        launches.add(launch.model);
+        return transport;
+      },
+    );
+    kernel.prepare();
+    await pumpEventQueue();
+
+    expect(launches, [null]);
+    expect(transport.methods, contains(CursorAcp.sessionLoad));
+    kernel.model.select('gpt-5');
+    await pumpEventQueue();
+    expect(launches, [null, 'gpt-5']);
+    kernel.dispose();
+  });
+
+  test('ACP model options use session/set_config_option', () async {
+    const options = [
+      {
+        'id': 'model',
+        'category': 'model',
+        'type': 'select',
+        'currentValue': 'composer-2.5',
+        'options': [
+          {'value': 'composer-2.5', 'name': 'Composer'},
+          {'value': 'gpt-5', 'name': 'GPT-5'},
+        ],
+      },
+    ];
+    final launches = <CursorAgentLaunch>[];
+    final transport = ScriptedCursorTransport(
+      onPrompt: (_, _) {},
+      configOptions: options,
+    );
+    final kernel = CursorAgentKernel(
+      _descriptor,
+      const KernelContext(cwd: '/work'),
+      start: (launch) async {
+        launches.add(launch);
+        return transport;
+      },
+    );
+    kernel.prepare();
+    await pumpEventQueue();
+
+    expect(kernel.model.options.map((option) => option.label), [
+      'Composer',
+      'GPT-5',
+    ]);
+    expect(kernel.switchRestarts('gpt-5'), isFalse);
+    kernel.model.select('gpt-5');
+    await pumpEventQueue();
+
+    expect(launches, hasLength(1));
+    final set = transport.written.lastWhere(
+      (message) => message['method'] == CursorAcp.sessionSetConfigOption,
+    );
+    expect(set['params'], {
+      'sessionId': 'sess_1',
+      'configId': 'model',
+      'value': 'gpt-5',
+    });
+    kernel.dispose();
+  });
+
+  test('without session/load the CLI chat still opens with a notice', () async {
+    final transport = ScriptedCursorTransport(onPrompt: (_, _) {});
+    final kernel = CursorAgentKernel(
+      _descriptor,
+      KernelContext(
+        cwd: '/work',
+        resume: SessionRecord(
+          id: 'cli-session',
+          title: 'Old',
+          updatedAt: DateTime.utc(2026, 1, 1),
+          cwd: '/work',
+        ),
+      ),
+      start: (_) async => transport,
+    );
+    final events = <KernelEvent>[];
+    kernel.events.listen(events.add);
+    kernel.prepare();
+    await pumpEventQueue();
+
+    expect(kernel.sessionId, 'sess_1');
+    expect(transport.methods, isNot(contains(CursorAcp.sessionLoad)));
+    expect(
+      events.whereType<ItemUpserted>().map((event) => event.item),
+      contains(
+        isA<NoticeItem>().having(
+          (item) => item.text,
+          'text',
+          contains('session/load'),
+        ),
+      ),
+    );
+    kernel.dispose();
+  });
 }
 
 KernelDescriptor get _descriptor => KernelDescriptor(
@@ -290,13 +454,20 @@ CursorAgentKernel _kernel(ScriptedCursorTransport transport) =>
     );
 
 class ScriptedCursorTransport implements CursorAgentTransport {
-  ScriptedCursorTransport({required this.onPrompt});
+  ScriptedCursorTransport({
+    required this.onPrompt,
+    this.loadSession = false,
+    this.configOptions,
+  });
 
   final void Function(
     ScriptedCursorTransport transport,
     Map<String, Object?> message,
   )
   onPrompt;
+
+  final bool loadSession;
+  final Object? configOptions;
 
   final StreamController<Map<String, Object?>> _out =
       StreamController.broadcast(sync: true);
@@ -340,7 +511,7 @@ class ScriptedCursorTransport implements CursorAgentTransport {
       case CursorAcp.initialize:
         reply(id, {
           'protocolVersion': 1,
-          'agentCapabilities': {'loadSession': false},
+          'agentCapabilities': {'loadSession': loadSession},
         });
       case CursorAcp.authenticate:
         reply(id, const {});
@@ -353,6 +524,34 @@ class ScriptedCursorTransport implements CursorAgentTransport {
               {'id': 'agent', 'name': 'Agent', 'description': 'Act'},
             ],
           },
+          if (configOptions != null) 'configOptions': configOptions,
+        });
+      case CursorAcp.sessionLoad:
+        reply(id, {
+          'modes': {
+            'currentModeId': 'agent',
+            'availableModes': [
+              {'id': 'agent', 'name': 'Agent', 'description': 'Act'},
+            ],
+          },
+          if (configOptions != null) 'configOptions': configOptions,
+        });
+      case CursorAcp.sessionSetConfigOption:
+        final params = message['params'];
+        final value = params is Map ? params['value'] : null;
+        reply(id, {
+          'configOptions': [
+            {
+              'id': 'model',
+              'category': 'model',
+              'type': 'select',
+              'currentValue': value,
+              'options': [
+                {'value': 'composer-2.5', 'name': 'Composer'},
+                {'value': 'gpt-5', 'name': 'GPT-5'},
+              ],
+            },
+          ],
         });
       case CursorAcp.sessionPrompt:
         onPrompt(this, message);

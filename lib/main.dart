@@ -198,6 +198,20 @@ Future<void> main(List<String> arguments) async {
     CursorAgentModelSetting.current = () => CursorAgentModelSetting.parse(
       files.settings[CursorAgentModelSetting.settingKey],
     );
+    CursorAgentModelSetting.recent = () => CursorAgentModelSetting.parseRecent(
+      files.settings[CursorAgentModelSetting.recentKey],
+    );
+    CursorAgentModelSetting.persist = (model, recent) {
+      unawaited(
+        files.settings.update(CursorAgentModelSetting.settingKey, model),
+      );
+      unawaited(
+        files.settings.update(
+          CursorAgentModelSetting.recentKey,
+          recent.isEmpty ? null : recent,
+        ),
+      );
+    };
     // Settings → General → Claude Code: the core sessions run on (BaoCode's
     // own, or the CLI), read as each agent starts. Unset, the CLI where it
     // is installed: looked for on the app's PATH, then the shell's.
@@ -311,9 +325,8 @@ Future<void> main(List<String> arguments) async {
       cursorAgentAvailable: agentAvailable,
       fallbackNotice: agentAvailable
           ? null
-          : lookupAppLocalizations(
-              locale.locale ?? AppLocale.systemLocale(),
-            ).cursorAgentStartupFallback,
+          : lookupAppLocalizations(locale.locale ?? AppLocale.systemLocale())
+                .cursorAgentStartupFallback,
     );
   }
   // The app's windows: the chat's, and the IDE's own, one per folder,

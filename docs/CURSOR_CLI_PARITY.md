@@ -16,6 +16,8 @@ References:
 | Session lifecycle | `cursor_agent_kernel.dart` | `session/new`, `session/prompt`, `session/cancel`, `session/set_mode`. |
 | Session resume (replay) | `cursor_agent_kernel.dart` | `session/load` when `agentCapabilities.loadSession` is true; replays via translator `replaying`. |
 | Modes | `cursor_agent_kernel.dart`, composer | `SelectsMode`: agent / plan / ask; `session/set_mode` + `current_mode_update`. |
+| Model picker | `cursor_agent_kernel.dart`, `session_model_picker.dart` | `SelectsModel`. ACP `configOptions` category `model` (from `session/new`, `session/load`, or `config_option_update`) is the menu; a pick calls `session/set_config_option`. If the CLI never advertises models, the menu is CLI default, the current id, recent ids, and a typed id. That path writes `cursorAgent.model` / `cursorAgent.recentModels` and restarts the process as `agent --model <id> acp` (confirm dialog once a session exists). A resumed CLI chat omits `--model` until the user picks, so the stored model stays. |
+| CLI history | `cursor_agent_sessions_io.dart` | Sidebar catalog reads Cursor CLI `chats/` and `acp-sessions/` (not Claude `projects/*.jsonl`, not IDE `agent-transcripts`). Opening a row resumes with `session/load` when advertised; otherwise the row still opens and the transcript says the history stays in the CLI store. |
 | User turn | `cursor_agent_kernel.dart` | Text + optional notes in `session/prompt`. |
 | Streaming text / thinking | `cursor_agent_translator.dart` | `agent_message_chunk`, `agent_thought_chunk`. |
 | Tool calls | `cursor_agent_translator.dart` | `tool_call` / `tool_call_update` → chat items. |
@@ -29,7 +31,7 @@ References:
 | Multi-root hints | `cursor_agent_kernel.dart` | `additionalDirectories` when advertised. |
 | MCP | `cursor_agent_kernel.dart` | Empty `mcpServers` in `session/new`; Cursor reads `.cursor/mcp.json` in project. |
 | Kernel registration / default | `kernel_registry.dart`, `main.dart` | **Cursor Agent only** in the registry; default kernel on startup. Claude descriptor kept for tests, not offered in UI. |
-| Settings | `general_page.dart`, `cursor_agent_path_setting.dart` | CLI path (`cursorAgent.path`); does not change locator hacks. |
+| Settings | `general_page.dart`, `cursor_agent_path_setting.dart`, `cursor_agent_model_setting.dart` | CLI path (`cursorAgent.path`) and model (`cursorAgent.model`). The composer writes the model key. Locator and `--yolo` are unchanged. |
 | Health / errors | `cursor_agent_kernel.dart` | Failed start, folder missing, RPC errors → `KernelHealth` + notices. |
 
 ## Partial / stub
@@ -37,10 +39,9 @@ References:
 | Area | What the UI or code does | Gap |
 | --- | --- | --- |
 | Plan → build | Plan approval works; no `StartsPlans` | No “Start building” handoff like Claude; accepted plan does not set `planUri` (see kernel TODO). |
-| Session resume | `session/load` only when capability set | No `session/resume` without replay; new session if load unsupported. |
+| Session resume | `session/load` only when capability set | No `session/resume` without replay. The sidebar still lists the CLI chat; opening it explains that history stays in the store and a new session starts. |
 | Permission modes | Per-request approvals only | No `SelectsPermission` (no global yolo / ask-once mode in shell). |
-| Model picker | Hidden (kernel does not implement `SelectsModel`) | Cursor model choice is CLI/account-side; shell does not yet map `config_option_update` / `available_commands_update`. |
-| Slash commands | Hidden (no `ProvidesCommands`) | Not wired from ACP command list. |
+| Slash commands | Hidden (no `ProvidesCommands`) | Not wired from ACP `available_commands_update`. |
 | Account usage / cost | No `ReportsUsage` | `usage_update` may appear in-thread only; no account limits bar like Claude. |
 | History paging | No `LoadsHistory` | No Claude-style transcript paging; rely on `session/load` replay when available. |
 | FS / terminal ACP | Declined at `initialize` | `clientCapabilities` fs + terminal false; notifications ignored. |
@@ -51,7 +52,7 @@ References:
 
 | Claude (`claude_code_kernel.dart`) | Cursor today | Impact |
 | --- | --- | --- |
-| `SelectsModel` + providers / proxy | Not implemented | Expected: model chosen in Cursor CLI or account, not in shell picker. |
+| `SelectsModel` + providers / proxy | Cursor model id only | No Claude provider catalog, proxy, or effort/context tiers. ACP model options when advertised; otherwise `cursorAgent.model`. |
 | `SelectsPermission` modes | Not implemented | Approvals are per tool request only. |
 | `ProvidesCommands` | Not implemented | No `/goal`, custom slash commands from shell. |
 | `QueuesMessages` | Not implemented | Cannot queue while busy. |
@@ -76,13 +77,19 @@ References:
 
 ## Deferred intentionally
 
-- **Model / commands from ACP notifications** — translator TODO until confirmed on live `agent acp` traces (`config_option_update`, `available_commands_update`).
+- **Slash commands from ACP** — `available_commands_update` is still ignored. Model `config_option_update` is applied when the payload matches the ACP select shape.
 - **Bundle / repo rename** — display name `BaoCursor`; bundle id `dev.baocode.desktop` and repo `baocode-cursor-agent` unchanged for updates.
 - **Hiding Claude-only Settings rows** — larger UX pass; kernel capability model already hides most composer controls for Cursor.
 
 ## High-value follow-ups (when protocol is confirmed)
 
-1. Map `config_option_update` to a read-only or picker model display if Cursor exposes models on ACP.
-2. Send image parts in `session/prompt` when CLI accepts them.
-3. Implement `StartsPlans.startBuilding()` if Cursor documents a post-approval action beyond `accepted`.
-4. `LoadsHistory` or slimmer “open old session” if `session/load` is absent but resume ids exist in catalog.
+1. Send image parts in `session/prompt` when CLI accepts them.
+2. Implement `StartsPlans.startBuilding()` if Cursor documents a post-approval action beyond `accepted`.
+3. Page a loaded transcript (`LoadsHistory`) when `session/load` replays more than the shell should show at once.
+
+## Check on macOS with Cursor CLI
+
+1. `agent login`, then in the project folder run `agent` and send a message so `~/.cursor/chats/<hash>/<id>/meta.json` (or `~/.cursor/acp-sessions/<id>/`) exists. `cwd` in that file should be the folder you will open.
+2. Open that folder in BaoCursor. The sidebar lists that CLI chat next to BaoCursor chats. The top-right editor chip reads **BaoCursor**.
+3. Open the CLI chat. If this `agent` build advertises `loadSession`, the transcript replays via `session/load`. If it does not, the chat still opens and a notice says the history stays in the CLI store and this is a new session.
+4. The composer shows a model pill beside Agent / Plan / Ask. With ACP `configOptions` category `model`, the menu is that list and a pick sends `session/set_config_option`. Otherwise it lists **CLI default**, the current id, recent ids, and **Other model…**. Picking another id asks to restart, then the process is `agent --model <id> acp`. Settings → General → Cursor Agent → Model matches the last pick.

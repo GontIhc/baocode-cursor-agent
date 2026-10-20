@@ -5885,6 +5885,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cursorAgentModelSettingHint => 'Default';
 
   @override
+  String get cursorModelCliDefault => 'CLI default';
+
+  @override
+  String get cursorModelCliDefaultDescription =>
+      'No --model flag; the CLI picks';
+
+  @override
+  String get cursorModelOther => 'Other model…';
+
+  @override
+  String get cursorModelOtherDescription => 'Type a model id';
+
+  @override
+  String get cursorModelOtherTitle => 'Model id';
+
+  @override
+  String get cursorModelSwitchDetail =>
+      'Cursor Agent restarts with this model (`agent --model … acp`) and continues this chat when the CLI can load the session. If it cannot, a new session starts and the previous CLI thread stays as it is.';
+
+  @override
   String get cursorAgentPathSettingHint => 'Automatic';
 
   @override

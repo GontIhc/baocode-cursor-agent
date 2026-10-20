@@ -12,7 +12,7 @@ import 'editor_launcher_stub.dart'
 enum Editor {
   /// BaoCode's own editor: the IDE layout, not an app to launch.
   fastIde(
-    'Fast Ide',
+    'BaoCursor',
     null,
     icon: Icons.space_dashboard_outlined,
     builtIn: true,

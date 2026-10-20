@@ -98,6 +98,7 @@ abstract final class CursorAcp {
   static const sessionPrompt = 'session/prompt';
   static const sessionCancel = 'session/cancel';
   static const sessionSetMode = 'session/set_mode';
+  static const sessionSetConfigOption = 'session/set_config_option';
   static const sessionUpdate = 'session/update';
   static const requestPermission = 'session/request_permission';
   static const askQuestion = 'cursor/ask_question';
