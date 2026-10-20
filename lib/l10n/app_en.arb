@@ -4300,8 +4300,8 @@
       }
     }
   },
-  "cursorAgentPathMissing": "Not found: install the Cursor CLI (curl https://cursor.com/install -fsS | bash), or set a path above. New conversations use Claude Code until then.",
-  "cursorAgentStartupFallback": "Cursor Agent CLI (`agent`) was not found. New conversations will use Claude Code. Install the CLI from Settings → General → Cursor Agent, or pick Cursor Agent in the composer once it is installed.",
+  "cursorAgentPathMissing": "Not found: install the Cursor CLI (curl https://cursor.com/install -fsS | bash), or set a path above.",
+  "cursorAgentStartupFallback": "Cursor Agent CLI (`agent`) was not found. Install it (curl https://cursor.com/install -fsS | bash) or set a path under Settings → General → Cursor Agent before starting a conversation.",
   "cursorAgentWorkspaceSetting": "CLI workspace",
   "cursorAgentWorkspaceSettingDescription": "Saved Cursor CLI workspace name passed as `agent --workspace` when starting ACP. Leave empty to use the project folder plus extra roots below. Save sets with `/save-workspace` in the CLI. (cursorAgent.workspace)",
   "cursorAgentWorkspaceNameHint": "Named workspace (optional)",

@@ -1,12 +1,12 @@
 # BaoCode (Cursor Agent fork)
 
-**This fork** targets the **[Cursor Agent CLI](https://cursor.com/docs/cli/overview)** (`agent acp`) as the default agent kernel, with a fast desktop UI and built-in IDE. [Claude Code](https://github.com/anthropics/claude-code) remains available when you need it. Upstream BaoCode branding and docs still apply in many places; see [CONTRIBUTING.md](CONTRIBUTING.md) for install and settings on this fork.
+**This fork** is a desktop shell around the **[Cursor Agent CLI](https://cursor.com/docs/cli/overview)** (`agent acp`) only — like upstream BaoCode was Claude Code only. It ships a fast UI and built-in IDE; **Claude Code is not offered** as an agent kernel here. Upstream BaoCode branding and docs still appear in places; see [CONTRIBUTING.md](CONTRIBUTING.md) for install and settings on this fork.
 
 <a href="https://trendshift.io/repositories/289180?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-289180" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/289180/daily?language=Dart" alt="baocode-dev%2Fbaocode | Trendshift" width="250" height="55"/></a>
 
 **English** · [简体中文](README_CN.md) · [日本語](README_JA.md) · [Français](README_FR.md) · [Español](README_ES.md)
 
-An awesome, easy-to-use desktop UI for coding agents — **Cursor Agent** on this fork, with [Claude Code](https://github.com/anthropics/claude-code) as an alternate kernel — and a millisecond-fast IDE built in.
+An awesome, easy-to-use desktop UI for **Cursor Agent**, with a millisecond-fast IDE built in.
 
 [Website](https://baocode.dev) · [Download](https://baocode.dev/download) · [Changelog](https://baocode.dev/changelog)
 
@@ -14,9 +14,9 @@ An awesome, easy-to-use desktop UI for coding agents — **Cursor Agent** on thi
 
 ## Why
 
-We use Claude Code every day. The terminal is a fine place to run it, but a poor place to read it: long diffs scroll out of view, earlier steps are hard to find again, and reviewing what changed means switching to another app. BaoCode is the window we wanted around it.
+The terminal is a fine place to run a coding agent, but a poor place to read one: long diffs scroll out of view, earlier steps are hard to find again, and reviewing what changed means switching to another app. This fork is the window we wanted around **Cursor Agent CLI**.
 
-BaoCode has no agent of its own, by design. Claude Code is the agent, and its ecosystem is unmatched: its tools, skills, plugins, MCP servers, subagents and hooks. BaoCode gives it the interface it deserves and makes everything around it work out of the box. It runs the Claude Code you already have, with your settings and your `CLAUDE.md`.
+BaoCode has no agent of its own, by design. On this fork the agent is **Cursor Agent** over ACP. The UI is built for reading turns, reviewing edits, and working in the IDE beside the chat.
 
 ## Features
 
@@ -51,11 +51,9 @@ VS Code and Cursor are built on Electron: each window is a web page, and every c
   curl https://cursor.com/install -fsS | bash
   ```
 
-- Optional: [Claude Code](https://github.com/anthropics/claude-code) if you switch the kernel to Claude Code in Settings → General.
+### Multi-repo workspaces (Cursor CLI)
 
-### Multi-repo workspaces (Cursor Agent)
-
-When the **Cursor Agent** kernel is selected, you can run across several repositories: set a saved CLI workspace name or add extra root folders in Settings → General → Cursor Agent (or in the bar above a new chat). The sidebar shows the active workspace and roots. See [CONTRIBUTING.md](CONTRIBUTING.md#multi-repo-workspaces-cursor-cli).
+You can run across several repositories: set a saved CLI workspace name or add extra root folders in Settings → General → Cursor Agent (or in the bar above a new chat). The sidebar shows the active workspace and roots. See [CONTRIBUTING.md](CONTRIBUTING.md#multi-repo-workspaces-cursor-cli).
 
 ## Building from source
 

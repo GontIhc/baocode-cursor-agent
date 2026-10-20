@@ -1047,8 +1047,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// [applyStartupKernelDefault] may pick one.
   bool _kernelRestoredFromStore = false;
 
-  /// Shown once after launch when Cursor Agent was not found and Claude
-  /// Code is the default kernel instead.
+  /// Shown once after launch when the Cursor Agent CLI was not found.
   String? kernelStartupNotice;
 
   set preferredKernel(KernelDescriptor kernel) {
@@ -1058,22 +1057,17 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     notifyListeners();
   }
 
-  /// Picks the default kernel for a first run, or when preferences had no
-  /// kernel yet. Cursor Agent when [cursorAgentAvailable], else Claude Code.
+  /// Picks Cursor Agent for a first run, or when preferences had no kernel
+  /// yet (or named a kernel this build no longer offers).
   void applyStartupKernelDefault({
     required bool cursorAgentAvailable,
     String? fallbackNotice,
   }) {
     if (_kernelRestoredFromStore) return;
-    preferredKernel = cursorAgentAvailable
-        ? kernels.firstWhere(
-            (k) => k.id == KernelRegistry.cursorAgent.id,
-            orElse: () => kernels.first,
-          )
-        : kernels.firstWhere(
-            (k) => k.id == KernelRegistry.claudeCode.id,
-            orElse: () => kernels.first,
-          );
+    preferredKernel = kernels.firstWhere(
+      (k) => k.id == KernelRegistry.cursorAgent.id,
+      orElse: () => kernels.first,
+    );
     if (!cursorAgentAvailable && fallbackNotice != null) {
       kernelStartupNotice = fallbackNotice;
     }
@@ -2014,6 +2008,12 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
         case final kernel?) {
       _preferredKernel = kernel;
       _kernelRestoredFromStore = true;
+    } else if (kept['kernel'] == KernelRegistry.claudeCode.id) {
+      // Migrated from dual-kernel builds: Cursor Agent only now.
+      _preferredKernel = kernels.firstWhere(
+        (k) => k.id == KernelRegistry.cursorAgent.id,
+        orElse: () => kernels.first,
+      );
     }
     // The file manager was kept as `finder` before it was `folder`.
     final editor = kept['editor'] == 'finder'

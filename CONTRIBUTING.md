@@ -1,6 +1,6 @@
 # Contributing (Cursor Agent fork)
 
-This repository is a fork of [BaoCode](https://github.com/baocode-dev/baocode) aimed at a **personal desktop shell for the [Cursor Agent CLI](https://cursor.com/docs/cli/overview)**. Claude Code remains available as a second kernel; Cursor Agent is the practical default when the `agent` binary is installed.
+This repository is a fork of [BaoCode](https://github.com/baocode-dev/baocode) aimed at a **personal desktop shell for the [Cursor Agent CLI](https://cursor.com/docs/cli/overview)** only. **Claude Code is not offered** as an agent kernel in this build; sessions use Cursor Agent (`agent acp`) over stdio.
 
 ## Quick start
 
@@ -23,7 +23,7 @@ This repository is a fork of [BaoCode](https://github.com/baocode-dev/baocode) a
 
 3. **Optional: pin the `agent` binary** — Settings → General → **Cursor Agent** → **Path** (`cursorAgent.path` in `settings.json`). Leave empty to search `PATH` and `~/.local/bin/agent`. **Model** (`cursorAgent.model`) is passed as `agent --model … acp` when set.
 
-4. **Pick the kernel** — Settings → General → **Agent kernel** (Cursor Agent vs Claude Code), or use the kernel menu in the composer before the first message.
+If the CLI is missing, the app shows an install hint at launch and when you start a conversation.
 
 ## Transport
 
