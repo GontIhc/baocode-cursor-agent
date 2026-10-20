@@ -430,7 +430,6 @@ Future<void> main(List<String> arguments) async {
       updates: _startUpdates(files),
       diagnostics: DiagnosticsUploader.platform(),
       workspace: workspace,
-      claudeStatus: localClaudeStatus,
       cursorAgentStatus: localCursorAgentStatus,
       link: link,
       customizations: customizations,

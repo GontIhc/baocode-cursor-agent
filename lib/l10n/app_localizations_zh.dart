@@ -5526,11 +5526,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cursorAgentPathMissing =>
-      '未找到：请安装 Cursor CLI（curl https://cursor.com/install -fsS | bash），或在上方填写路径。在此之前新对话将使用 Claude Code。';
+      '未找到：请安装 Cursor CLI（curl https://cursor.com/install -fsS | bash），或在上方填写路径。';
 
   @override
   String get cursorAgentStartupFallback =>
-      '未找到 Cursor Agent CLI（`agent`）。新对话将使用 Claude Code。请在 设置 → 通用 → Cursor Agent 安装 CLI，或安装后在输入框中选择 Cursor Agent。';
+      '未找到 Cursor Agent CLI（`agent`）。请安装（curl https://cursor.com/install -fsS | bash），或在 设置 → 通用 → Cursor Agent 中指定路径后再开始对话。';
 
   @override
   String get cursorAgentWorkspaceSetting => 'CLI 工作区';

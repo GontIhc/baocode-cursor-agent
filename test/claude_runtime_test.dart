@@ -6,13 +6,11 @@ import 'dart:io';
 
 import 'package:bao_remote/client.dart' show RemotePlatform;
 import 'package:bao_remote/local.dart';
-import 'package:baocode/kernel/claude_code/claude_core_setting.dart';
 import 'package:baocode/kernel/claude_code/claude_install_progress.dart';
 import 'package:baocode/kernel/claude_code/claude_path_setting.dart';
 import 'package:baocode/kernel/claude_code/local_claude_io.dart';
 import 'package:baocode/l10n/l10n.dart';
 import 'package:baocode/remote/remote_status.dart';
-import 'package:baocode/settings/pages/general_page.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -266,48 +264,6 @@ void main() {
           .having((s) => s.version, 'version', '2.0.0')
           .having((s) => s.downloaded, 'downloaded', isFalse),
     );
-  });
-
-  testWidgets('Settings → General: the path set, and the one in use under '
-      'it', (tester) async {
-    // Tall enough for the Claude Code group, below the chat's.
-    tester.view.physicalSize = const Size(1200, 3000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    Future<void> show(LocalClaudeStatus status) async {
-      await tester.pumpWidget(const SizedBox());
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: GeneralSettingsPage(claudeStatus: () async => status),
-          ),
-        ),
-      );
-      await tester.pump();
-    }
-
-    await show(const LocalClaudeFound('/usr/local/bin/claude', '2.1.3'));
-    // The core, unset, with no Claude Code installed: BaoCode's own.
-    expect(find.text('Built-in'), findsOneWidget);
-    // With one installed: the CLI.
-    ClaudeCore.cliInstalled = () => true;
-    addTearDown(() => ClaudeCore.cliInstalled = () => false);
-    await show(const LocalClaudeFound('/usr/local/bin/claude', '2.1.3'));
-    expect(find.text('Claude Code CLI'), findsOneWidget);
-    expect(find.text('Built-in'), findsNothing);
-    expect(find.text('Automatic'), findsOneWidget);
-    expect(find.text('In use: /usr/local/bin/claude (2.1.3)'), findsOneWidget);
-    await show(
-      const LocalClaudeFound('/data/claude-2.1.4', '2.1.4', downloaded: true),
-    );
-    expect(
-      find.text('In use: Claude Code 2.1.4, downloaded by BaoCode'),
-      findsOneWidget,
-    );
-    await show(const LocalClaudeMissing());
-    expect(find.textContaining('None found yet'), findsOneWidget);
   });
 
   test('a download refused says how to install it by hand', () async {

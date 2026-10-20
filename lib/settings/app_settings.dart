@@ -7,7 +7,6 @@ import '../channel/channel_setup.dart' show ChannelSetup;
 import '../diagnostics/diagnostics_upload.dart';
 import '../forge/forge_accounts.dart';
 import '../customize/customization_store.dart';
-import '../kernel/claude_code/claude_path_setting.dart';
 import '../kernel/cursor_agent/cursor_agent_path_setting.dart';
 import '../keybindings/import_dialog.dart';
 import '../keybindings/keybinding_service.dart';
@@ -62,7 +61,6 @@ class AppSettings {
     this.updates,
     this.diagnostics,
     this.workspace,
-    this.claudeStatus,
     this.cursorAgentStatus,
     this.link,
     this.customizations,
@@ -97,10 +95,6 @@ class AppSettings {
   /// The link with the phones paired, for Settings → Mobile; none under
   /// test, nor on the web.
   final LinkHost? link;
-
-  /// The Claude Code that runs on this machine, for Settings → General;
-  /// none under test, where it is not looked for.
-  final Future<LocalClaudeStatus?> Function()? claudeStatus;
 
   /// The Cursor Agent CLI on this machine, for Settings → General; none
   /// under test, where it is not looked for.
@@ -156,7 +150,6 @@ class AppSettings {
         return GeneralSettingsPage(
           settings: files?.settings,
           tips: tips,
-          claudeStatus: claudeStatus,
           cursorAgentStatus: cursorAgentStatus,
           workspace: workspace,
         );

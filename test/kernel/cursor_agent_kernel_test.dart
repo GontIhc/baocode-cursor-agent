@@ -11,8 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('Cursor Agent is registered beside Claude Code', () {
+  test('Cursor Agent is the only user-facing kernel', () {
     expect(KernelRegistry.cursorAgent.id, 'cursor-agent');
+    expect(KernelRegistry.all, [KernelRegistry.cursorAgent]);
     expect(KernelRegistry.claudeCode.id, 'claude-code');
     final kernel = KernelRegistry.cursorAgent.create(
       const KernelContext(cwd: '/work'),

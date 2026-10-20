@@ -5,8 +5,8 @@ import 'claude_code/claude_code_kernel.dart';
 import 'cursor_agent/cursor_agent_kernel.dart';
 import '../remote/remote_claude.dart';
 
-/// The kernels the user can pick from. Another kernel is an adapter and a
-/// line here.
+/// Kernels the app can run. This fork registers only Cursor Agent for
+/// normal use; [claudeCode] stays for tests and internal tooling.
 abstract final class KernelRegistry {
   static final KernelDescriptor claudeCode = KernelDescriptor(
     id: 'claude-code',
@@ -37,7 +37,7 @@ abstract final class KernelRegistry {
     create: (context) => CursorAgentKernel(cursorAgent, context),
   );
 
-  static List<KernelDescriptor> _all = [cursorAgent, claudeCode];
+  static List<KernelDescriptor> _all = [cursorAgent];
 
   static List<KernelDescriptor> get all => _all;
 

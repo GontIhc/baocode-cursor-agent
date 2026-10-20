@@ -5900,11 +5900,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cursorAgentPathMissing =>
-      'Not found: install the Cursor CLI (curl https://cursor.com/install -fsS | bash), or set a path above. New conversations use Claude Code until then.';
+      'Not found: install the Cursor CLI (curl https://cursor.com/install -fsS | bash), or set a path above.';
 
   @override
   String get cursorAgentStartupFallback =>
-      'Cursor Agent CLI (`agent`) was not found. New conversations will use Claude Code. Install the CLI from Settings → General → Cursor Agent, or pick Cursor Agent in the composer once it is installed.';
+      'Cursor Agent CLI (`agent`) was not found. Install it (curl https://cursor.com/install -fsS | bash) or set a path under Settings → General → Cursor Agent before starting a conversation.';
 
   @override
   String get cursorAgentWorkspaceSetting => 'CLI workspace';
