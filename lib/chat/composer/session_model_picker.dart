@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../channel/channel_setup.dart' show ChannelSetup;
 import '../../ide/ide_dialog.dart';
 import '../../kernel/agent_kernel.dart';
+import '../../kernel/cursor_agent/cursor_agent_models.dart';
 import '../../kernel/kernel_types.dart';
 import '../../l10n/l10n.dart';
 import '../../models/model_welcome.dart';
@@ -58,6 +59,29 @@ class SessionModelPicker extends StatelessWidget {
         selected.label,
   ].join(' · ');
 
+  bool get _cursor => session.kernel.id == 'cursor-agent';
+
+  /// The fallback menu's fixed rows, in the display language. ACP options
+  /// and typed ids keep the label the kernel gave them.
+  KernelOption _shown(KernelOption option, AppLocalizations l10n) {
+    if (!_cursor) return option;
+    return switch (option.id) {
+      CursorAgentModels.cliDefaultId => KernelOption(
+        option.id,
+        l10n.cursorModelCliDefault,
+        option.icon,
+        l10n.cursorModelCliDefaultDescription,
+      ),
+      CursorAgentModels.otherId => KernelOption(
+        option.id,
+        l10n.cursorModelOther,
+        option.icon,
+        l10n.cursorModelOtherDescription,
+      ),
+      _ => option,
+    };
+  }
+
   /// Runs [pick], which switches to [option]: once confirmed, if that
   /// restarts the agent on another upstream mid-conversation.
   Future<void> _switch(
@@ -70,11 +94,47 @@ class SessionModelPicker extends StatelessWidget {
     final choice = await showIdeDialog(
       context,
       message: l10n.modelsSwitchTitle(option.group?.label ?? option.label),
-      detail: l10n.modelsSwitchDetail,
+      detail: _cursor ? l10n.cursorModelSwitchDetail : l10n.modelsSwitchDetail,
       buttons: [l10n.modelsSwitchConfirm],
       type: IdeDialogType.question,
     );
     if (choice == 0 && context.mounted) pick();
+  }
+
+  Future<void> _pick(
+    BuildContext context,
+    KernelChoice model,
+    KernelOption option,
+  ) async {
+    var chosen = option;
+    if (option.id == CursorAgentModels.otherId) {
+      final typed = await _askModelId(context);
+      if (typed == null || !context.mounted) return;
+      chosen = KernelOption(
+        typed,
+        typed,
+        option.icon,
+        'agent --model $typed acp',
+      );
+    }
+    if (!context.mounted) return;
+    await _switch(context, chosen, () => model.onSelected(chosen));
+  }
+
+  Future<String?> _askModelId(BuildContext context) async {
+    final l10n = context.l10n;
+    final result = await showIdeInputDialog(
+      context,
+      message: l10n.cursorModelOtherTitle,
+      detail: l10n.cursorAgentModelSettingDescription,
+      buttons: [l10n.commonOk],
+      inputs: [IdeDialogInput(placeholder: l10n.cursorAgentModelSettingHint)],
+      type: IdeDialogType.question,
+    );
+    if (result == null || result.button != 0) return null;
+    final typed = result.values.first.trim();
+    if (typed.isEmpty || typed == CursorAgentModels.otherId) return null;
+    return typed;
   }
 
   @override
@@ -88,11 +148,13 @@ class SessionModelPicker extends StatelessWidget {
         onTap: () => unawaited(showModelWelcome(context)),
       );
     }
+    final options = [for (final option in model.options) _shown(option, l10n)];
+    final selected = _shown(model.selected, l10n);
     return ComposerPicker(
       key: pickerKey,
-      options: model.options,
-      selected: model.selected,
-      label: _label(model.selected, model.options),
+      options: options,
+      selected: selected,
+      label: _label(selected, options),
       // Each its name alone, one line; its maker's logo and its upstream's
       // heading tell the rest.
       describes: false,
@@ -111,20 +173,21 @@ class SessionModelPicker extends StatelessWidget {
       tooltip: tooltip,
       menuWidth: 260,
       searchPlaceholder: l10n.modelsSearch,
-      footer: switch (SettingsOpener.maybeOf(context)) {
-        final open? => (
-          label: ChannelSetup.channelBuild
-              ? l10n.channelAccountTitle
-              : l10n.modelsManage,
-          icon: Icons.tune_rounded,
-          onTap: () => open(SettingsSection.models),
-        ),
-        null => null,
-      },
+      footer: _cursor
+          ? null
+          : switch (SettingsOpener.maybeOf(context)) {
+              final open? => (
+                label: ChannelSetup.channelBuild
+                    ? l10n.channelAccountTitle
+                    : l10n.modelsManage,
+                icon: Icons.tune_rounded,
+                onTap: () => open(SettingsSection.models),
+              ),
+              null => null,
+            },
       tapRegionGroupId: tapRegionGroupId,
       focusNode: focusNode,
-      onSelected: (option) =>
-          unawaited(_switch(context, option, () => model.onSelected(option))),
+      onSelected: (option) => unawaited(_pick(context, model, option)),
     );
   }
 }

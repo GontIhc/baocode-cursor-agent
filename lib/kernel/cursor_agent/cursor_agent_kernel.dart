@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../chat/chat_models.dart';
+import '../../models/model_provider.dart';
 import '../agent_kernel.dart';
 import '../kernel_event.dart';
 import '../kernel_types.dart';
 import 'cursor_agent_model_setting.dart';
+import 'cursor_agent_models.dart';
 import 'cursor_agent_process.dart';
 import 'cursor_agent_translator.dart';
 import 'cursor_agent_transport.dart';
@@ -28,11 +30,11 @@ import 'cursor_agent_workspace.dart';
 /// Wired in this pass: initialize, `authenticate` (`cursor_login`),
 /// `session/new` or `session/load`, `session/prompt`, `session/cancel`,
 /// `session/set_mode`, text and thought chunks, tool calls, plans, usage,
-/// permission replies, and the documented `cursor/ask_question` and
-/// `cursor/create_plan` bodies.
+/// permission replies, model selection, and the documented
+/// `cursor/ask_question` and `cursor/create_plan` bodies.
 class CursorAgentKernel
     with KernelEventSource
-    implements AgentKernel, SelectsMode {
+    implements AgentKernel, SelectsMode, SelectsModel, ConfirmsModelSwitch {
   CursorAgentKernel(this.descriptor, this._context, {CursorAgentStarter? start})
     : _start = start ?? startCursorAgent {
     mode = LocalChoice([...modes], onChanged: _modeChanged);
@@ -41,10 +43,17 @@ class CursorAgentKernel
       mode.reported = initial;
       _modeTouched = true;
     }
+    _selectedModel = _initialModelId();
+    _recentModels = [
+      for (final id in CursorAgentModelSetting.recent())
+        if (_cursorModelId(id) != null) id,
+    ];
+    model = _CursorModelChoice(this);
     _translator = CursorAgentTranslator(
       emit: emit,
       nextSeq: () => nextSeq,
       onMode: _modeReported,
+      onConfigOptions: _noteConfig,
     );
   }
 
@@ -81,6 +90,23 @@ class CursorAgentKernel
 
   @override
   late final LocalChoice mode;
+
+  @override
+  late final KernelChoiceSource model;
+
+  /// The id in the picker. Empty is the CLI default (no `--model`).
+  String _selectedModel = CursorAgentModels.cliDefaultId;
+
+  /// True after the user picks a model. A resumed CLI chat keeps the
+  /// model it was stored with until then.
+  bool _modelTouched = false;
+
+  List<String> _recentModels = const [];
+
+  /// Set when ACP advertises a model `select` option. Picks then go
+  /// through `session/set_config_option` instead of a process restart.
+  String? _acpModelConfigId;
+  List<KernelOption>? _acpModelOptions;
 
   late final CursorAgentTranslator _translator;
 
@@ -264,11 +290,7 @@ class CursorAgentKernel
         CursorAgentLaunch(
           cwd: cwd,
           processArguments: resolved.processArguments,
-          model:
-              CursorAgentModelSetting.current() ??
-              CursorAgentModelSetting.parse(
-                _context.settings[CursorAgentModelSetting.settingKey],
-              ),
+          model: _modelForLaunch(),
         ),
       );
       if (_disposed || epoch != _epoch) {
@@ -355,10 +377,14 @@ class CursorAgentKernel
           'sessionId': resume,
         }, timeout: const Duration(seconds: 30));
         _noteModes(loaded);
+        _noteConfig(loaded['configOptions'] ?? loaded);
         return;
       } on CursorAgentRpcException catch (error) {
         _sessionId = null;
-        _notice('Could not load Cursor session $resume: ${error.message}');
+        _notice(
+          'Could not load Cursor session $resume (${error.message}). '
+          'Its history stays in the CLI store. Starting a new session.',
+        );
       } finally {
         _translator.replaying = false;
       }
@@ -367,8 +393,9 @@ class CursorAgentKernel
       // sessionCapabilities.resume. Cursor's page names `session/load`
       // and not `session/resume`. https://cursor.com/docs/cli/acp
       _notice(
-        'This Cursor Agent build did not offer session loading. '
-        'Starting a new session.',
+        'This Cursor Agent build did not offer session/load, so this CLI '
+        'chat cannot be resumed. Its history stays in the Cursor CLI '
+        'store. This is a new session.',
       );
     }
     final created = await _request(
@@ -384,6 +411,7 @@ class CursorAgentKernel
     }
     _sessionId = id;
     _noteModes(created);
+    _noteConfig(created['configOptions'] ?? created);
   }
 
   void _readCapabilities(Map<String, Object?> result) {
@@ -436,6 +464,130 @@ class CursorAgentKernel
       if (!_modeTouched) mode.reported = current;
     }
     emitInfoChanged();
+  }
+
+  /// ACP `configOptions` from `session/new`, `session/load`, or
+  /// `config_option_update`. Replaces the fallback menu when a model
+  /// selector is present.
+  void _noteConfig(Object? raw) {
+    final parsed = parseCursorAcpModels(raw);
+    if (parsed == null) return;
+    _acpModelConfigId = parsed.configId;
+    final options = [...parsed.options];
+    final current = parsed.currentValue;
+    if (current != null && !options.any((option) => option.id == current)) {
+      options.insert(
+        0,
+        KernelOption(current, current, Icons.auto_awesome_outlined, ''),
+      );
+    }
+    _acpModelOptions = options;
+    if (current != null) _selectedModel = current;
+    emitInfoChanged();
+  }
+
+  List<KernelOption> get _modelOptions =>
+      _acpModelOptions ??
+      buildCursorFallbackModels(
+        selected: _selectedModel,
+        recent: _recentModels,
+      );
+
+  @override
+  bool switchRestarts(String model) {
+    if (model == CursorAgentModels.otherId || model == _selectedModel) {
+      return false;
+    }
+    // Advertised ACP options change in place.
+    if (_acpModelConfigId != null) return false;
+    return _sessionId != null || _transport != null || _booting != null;
+  }
+
+  void _pickModel(String id) {
+    if (id == CursorAgentModels.otherId || id == _selectedModel) return;
+    if (_cursorModelId(id) == null && id != CursorAgentModels.cliDefaultId) {
+      return;
+    }
+    _selectedModel = id;
+    _modelTouched = true;
+    _rememberModel(id);
+    emitInfoChanged();
+    if (_acpModelConfigId != null && id != CursorAgentModels.cliDefaultId) {
+      unawaited(_applyAcpModel(id));
+      return;
+    }
+    if (_transport != null || _booting != null) restart();
+  }
+
+  Future<void> _applyAcpModel(String id) async {
+    final session = _sessionId;
+    final configId = _acpModelConfigId;
+    if (session == null || configId == null) {
+      if (_transport != null || _booting != null) restart();
+      return;
+    }
+    try {
+      final result = await _request(CursorAcp.sessionSetConfigOption, {
+        'sessionId': session,
+        'configId': configId,
+        'value': id,
+      }, timeout: const Duration(seconds: 15));
+      _noteConfig(result['configOptions'] ?? result);
+    } on CursorAgentRpcException catch (error) {
+      _notice(
+        'Could not switch the model in this session (${error.message}). '
+        'Restarting with --model $id.',
+      );
+      if (_transport != null || _booting != null) restart();
+    }
+  }
+
+  String _initialModelId() {
+    final picked = _context.settings[KernelChoiceKind.model.name];
+    final fromChat = _cursorModelId(picked);
+    if (fromChat != null) return fromChat;
+    return CursorAgentModelSetting.current() ??
+        CursorAgentModelSetting.parse(
+          _context.settings[CursorAgentModelSetting.settingKey],
+        ) ??
+        CursorAgentModels.cliDefaultId;
+  }
+
+  /// A Cursor model id. Claude provider refs (`@provider/model`) are not
+  /// passed through as `--model`.
+  String? _cursorModelId(String? id) {
+    if (id == null) return null;
+    final trimmed = id.trim();
+    if (trimmed.isEmpty || trimmed == CursorAgentModels.otherId) return null;
+    if (parseModelRef(trimmed) != null) return null;
+    return trimmed;
+  }
+
+  /// `--model` for the next process. A resumed chat omits it until the
+  /// user picks, so the CLI session keeps the model it was stored with.
+  String? _modelForLaunch() {
+    if (_context.resume != null && !_modelTouched) return null;
+    if (_selectedModel == CursorAgentModels.cliDefaultId) return null;
+    return _cursorModelId(_selectedModel);
+  }
+
+  void _rememberModel(String id) {
+    final model = id == CursorAgentModels.cliDefaultId ? null : id;
+    if (model != null) {
+      _recentModels = [
+        model,
+        for (final recent in _recentModels)
+          if (recent != model) recent,
+      ];
+      if (_recentModels.length > CursorAgentModels.recentLimit) {
+        _recentModels = _recentModels.sublist(0, CursorAgentModels.recentLimit);
+      }
+    }
+    try {
+      CursorAgentModelSetting.persist(model, [..._recentModels]);
+    } on Object {
+      // Settings can be missing under test. The in-memory pick still stands.
+    }
   }
 
   void _modeChanged(String id) {
@@ -902,4 +1054,19 @@ final class _PlanPending extends _Pending {
 /// or [CursorAgentKernel.dispose].
 final class _BootCancelled implements Exception {
   const _BootCancelled();
+}
+
+final class _CursorModelChoice implements KernelChoiceSource {
+  _CursorModelChoice(this._kernel);
+
+  final CursorAgentKernel _kernel;
+
+  @override
+  List<KernelOption> get options => _kernel._modelOptions;
+
+  @override
+  String? get selected => _kernel._selectedModel;
+
+  @override
+  void select(String id) => _kernel._pickModel(id);
 }

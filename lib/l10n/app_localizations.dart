@@ -9459,6 +9459,24 @@ abstract class AppLocalizations {
   /// No description provided for @cursorAgentModelSettingHint.
   String get cursorAgentModelSettingHint;
 
+  /// No description provided for @cursorModelCliDefault.
+  String get cursorModelCliDefault;
+
+  /// No description provided for @cursorModelCliDefaultDescription.
+  String get cursorModelCliDefaultDescription;
+
+  /// No description provided for @cursorModelOther.
+  String get cursorModelOther;
+
+  /// No description provided for @cursorModelOtherDescription.
+  String get cursorModelOtherDescription;
+
+  /// No description provided for @cursorModelOtherTitle.
+  String get cursorModelOtherTitle;
+
+  /// No description provided for @cursorModelSwitchDetail.
+  String get cursorModelSwitchDetail;
+
   /// No description provided for @cursorAgentPathSettingHint.
   String get cursorAgentPathSettingHint;
 

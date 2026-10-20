@@ -5511,6 +5511,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cursorAgentModelSettingHint => '默认';
 
   @override
+  String get cursorModelCliDefault => 'CLI 默认';
+
+  @override
+  String get cursorModelCliDefaultDescription => '不传 --model，由 CLI 选择';
+
+  @override
+  String get cursorModelOther => '其他模型…';
+
+  @override
+  String get cursorModelOtherDescription => '输入模型 ID';
+
+  @override
+  String get cursorModelOtherTitle => '模型 ID';
+
+  @override
+  String get cursorModelSwitchDetail =>
+      'Cursor Agent 会用该模型重启（`agent --model … acp`）。若 CLI 支持加载会话，则继续当前对话；否则会新开一个会话，原来的 CLI 记录保持不变。';
+
+  @override
   String get cursorAgentPathSettingHint => '自动';
 
   @override

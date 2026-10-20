@@ -23,7 +23,7 @@ Feature parity vs the upstream Claude adapter is documented in [docs/CURSOR_CLI_
    flutter run -d macos    # or windows / linux
    ```
 
-3. **Optional: pin the `agent` binary** — Settings → General → **Cursor Agent** → **Path** (`cursorAgent.path` in `settings.json`). Leave empty to search `PATH` and `~/.local/bin/agent`. **Model** (`cursorAgent.model`) is passed as `agent --model … acp` when set.
+3. **Optional: pin the `agent` binary** — Settings → General → **Cursor Agent** → **Path** (`cursorAgent.path` in `settings.json`). Leave empty to search `PATH` and `~/.local/bin/agent`. **Model** (`cursorAgent.model`) is passed as `agent --model … acp` when set. The composer picker writes the same key (or uses ACP model options when the CLI sends them).
 
 If the CLI is missing, the app shows an install hint at launch and when you start a conversation.
 

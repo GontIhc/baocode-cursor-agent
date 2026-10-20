@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'agent_kernel.dart';
 import 'claude_code/claude_code_kernel.dart';
 import 'cursor_agent/cursor_agent_kernel.dart';
+import 'cursor_agent/cursor_agent_sessions.dart';
 import '../remote/remote_claude.dart';
 
 /// Kernels the app can run. This fork registers only Cursor Agent for
@@ -35,6 +36,7 @@ abstract final class KernelRegistry {
     icon: Icons.smart_toy_outlined,
     description: 'Cursor’s coding agent, over ACP',
     create: (context) => CursorAgentKernel(cursorAgent, context),
+    catalog: const CursorAgentCatalog(),
   );
 
   static List<KernelDescriptor> _all = [cursorAgent];

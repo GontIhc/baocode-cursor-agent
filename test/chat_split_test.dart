@@ -413,7 +413,7 @@ void main() {
 
     workspace.preferredEditor = Editor.fastIde;
     await tester.pump();
-    await tester.tap(tool('Open in Fast Ide'));
+    await tester.tap(tool('Open in BaoCursor'));
     await tester.pump();
     await tester.pump();
     expect(workspace.layout, WorkspaceLayout.ide);

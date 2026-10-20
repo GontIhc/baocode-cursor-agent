@@ -20,6 +20,7 @@ class CursorAgentTranslator {
     required this.emit,
     required this.nextSeq,
     this.onMode,
+    this.onConfigOptions,
   });
 
   final void Function(KernelEvent event) emit;
@@ -27,6 +28,9 @@ class CursorAgentTranslator {
 
   /// The agent's `current_mode_update`, an id such as `agent` or `plan`.
   final void Function(String modeId)? onMode;
+
+  /// `config_option_update`'s `configOptions`, when the CLI sends them.
+  final void Function(Object? configOptions)? onConfigOptions;
 
   /// True while `session/load` replays history. A live prompt already
   /// showed the user message, so user chunks are kept only here.
@@ -70,10 +74,15 @@ class CursorAgentTranslator {
       case 'current_mode_update':
         final id = update['currentModeId'];
         if (id is String && id.isNotEmpty) onMode?.call(id);
+      case 'config_option_update':
+        // Model (and any other) selectors. The kernel keeps the model
+        // option; other categories are ignored until they have a control.
+        // https://agentclientprotocol.com/protocol/v1/session-config-options
+        onConfigOptions?.call(update['configOptions'] ?? update);
       default:
-        // TODO: available_commands_update, config_option_update (models),
-        // session_info_update, notice, compaction. Not mapped until a live
-        // `agent acp` trace shows the fields Cursor actually sends.
+        // TODO: available_commands_update, session_info_update, notice,
+        // compaction. Not mapped until a live `agent acp` trace shows the
+        // fields Cursor actually sends.
         // https://cursor.com/docs/cli/acp
         // https://agentclientprotocol.com/protocol/v1/schema
         break;

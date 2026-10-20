@@ -42,7 +42,7 @@ VS Code and Cursor are built on Electron: each window is a web page, and every c
 ## Requirements
 
 - macOS 12 or later (Apple silicon or Intel, one download each), Windows 10 or later (x64), or Linux: Ubuntu 22.04 or later and other Debian-based distributions (x64 or arm64, a .deb each).
-- **[Cursor Agent CLI](https://cursor.com/docs/cli/installation)** (`agent` on your `PATH`, or set `cursorAgent.path` in settings). Optional: `cursorAgent.model` in settings (Settings → General → Cursor Agent) is passed as `agent --model … acp`. Install with:
+- **[Cursor Agent CLI](https://cursor.com/docs/cli/installation)** (`agent` on your `PATH`, or set `cursorAgent.path` in settings). The composer model pill uses ACP’s model list when `agent acp` advertises one; otherwise it sets `cursorAgent.model` (Settings → General → Cursor Agent) and passes `agent --model … acp`. CLI chats for the open folder show in the sidebar. Install with:
 
   ```sh
   curl https://cursor.com/install -fsS | bash
