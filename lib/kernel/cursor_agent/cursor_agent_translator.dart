@@ -578,18 +578,97 @@ CursorPermissionChoice cursorPermissionChoice(Map<String, Object?> params) {
 
 String? _permissionReason(Map<String, Object?> tool) {
   final locations = tool['locations'];
-  if (locations is! List || locations.isEmpty) return null;
-  final path = cursorJsonMap(locations.first)?['path'];
+  if (locations is List && locations.isNotEmpty) {
+    final paths = <String>[];
+    for (final raw in locations) {
+      final path = cursorJsonMap(raw)?['path'];
+      if (path is String && path.isNotEmpty) paths.add(path);
+    }
+    if (paths.isNotEmpty) return paths.join(', ');
+  }
+  final kind = tool['kind'];
+  if (kind == 'read' || kind == 'search' || kind == 'fetch') {
+    final path = _pathFromRawInput(tool['rawInput']);
+    if (path != null) return path;
+  }
+  return null;
+}
+
+String? _pathFromRawInput(Object? raw) {
+  final map = cursorJsonMap(raw);
+  final path = map?['path'] ?? map?['file_path'] ?? map?['filePath'];
   return path is String && path.isNotEmpty ? path : null;
 }
 
 ApprovalPreview? _permissionPreview(Map<String, Object?> tool) {
+  final fromContent = _permissionPreviewFromContent(tool['content']);
+  if (fromContent != null) return fromContent;
+
   final raw = tool['rawInput'];
-  if (raw == null) return null;
+  final kind = tool['kind'];
+  if (kind == 'execute' && raw is String && raw.isNotEmpty) {
+    return CommandPreview(raw);
+  }
+  if (kind == 'edit' || kind == 'delete' || kind == 'move') {
+    final path = _permissionPath(tool);
+    if (path != null && raw is String && raw.isNotEmpty) {
+      return TextPreview(raw);
+    }
+    if (path != null) return TextPreview(path);
+  }
+  if (raw == null) {
+    final path = _permissionPath(tool);
+    return path == null ? null : TextPreview(path);
+  }
   if (raw is String && raw.isEmpty) return null;
-  if (tool['kind'] == 'execute' && raw is String) return CommandPreview(raw);
   if (raw is String) return TextPreview(raw);
   return TextPreview(jsonEncode(raw));
+}
+
+String? _permissionPath(Map<String, Object?> tool) {
+  final locations = tool['locations'];
+  if (locations is List && locations.isNotEmpty) {
+    final path = cursorJsonMap(locations.first)?['path'];
+    if (path is String && path.isNotEmpty) return path;
+  }
+  return _pathFromRawInput(tool['rawInput']);
+}
+
+ApprovalPreview? _permissionPreviewFromContent(Object? raw) {
+  if (raw is! List) return null;
+  for (final entry in raw) {
+    final block = cursorJsonMap(entry);
+    if (block == null) continue;
+    switch (block['type']) {
+      case 'diff':
+        final path = block['path'];
+        if (path is! String || path.isEmpty) continue;
+        return DiffPreview(
+          path,
+          _permissionDiffLines(block['oldText'], block['newText']),
+        );
+      case 'content':
+        final content = cursorJsonMap(block['content']);
+        final text = content?['text'];
+        if (content?['type'] == 'text' && text is String && text.isNotEmpty) {
+          return TextPreview(text);
+        }
+    }
+  }
+  return null;
+}
+
+List<DiffLine> _permissionDiffLines(Object? before, Object? after) {
+  final oldText = before is String ? before : '';
+  final newText = after is String ? after : '';
+  return [
+    if (oldText.isNotEmpty)
+      for (final (i, line) in oldText.split('\n').indexed)
+        DiffLine(DiffLineType.removed, i + 1, line),
+    if (newText.isNotEmpty)
+      for (final (i, line) in newText.split('\n').indexed)
+        DiffLine(DiffLineType.added, i + 1, line),
+  ];
 }
 
 /// `cursor/ask_question`. Null when there is nothing to ask, so the kernel
@@ -632,8 +711,14 @@ CursorQuestionForm? cursorQuestionForm(Map<String, Object?> params) {
       final optionId = option?['id'];
       final label = option?['label'];
       if (optionId is! String || label is! String || label.isEmpty) continue;
+      final description = option?['description'];
       labelToId[label] = optionId;
-      choices.add(QuestionOption(label));
+      choices.add(
+        QuestionOption(
+          label,
+          description: description is String ? description : '',
+        ),
+      );
     }
     if (choices.isEmpty) continue;
     questions.add(
@@ -689,6 +774,39 @@ List<TodoEntry> cursorCreatePlanTodos(Map<String, Object?> params) {
     }
   }
   return todos;
+}
+
+/// Markdown-ish plan body for [TextPreview], including phased todos when
+/// present.
+String cursorCreatePlanPreview(Map<String, Object?> params) {
+  final plan = params['plan'];
+  final body = plan is String ? plan.trim() : '';
+  final phases = params['phases'];
+  if (phases is! List || phases.isEmpty) return body;
+  final buffer = StringBuffer();
+  if (body.isNotEmpty) {
+    buffer.writeln(body);
+    buffer.writeln();
+  }
+  for (final raw in phases) {
+    final phase = cursorJsonMap(raw);
+    final name = phase?['name'];
+    if (name is String && name.isNotEmpty) {
+      buffer.writeln('## $name');
+    }
+    final todos = phase?['todos'];
+    if (todos is List) {
+      for (final item in todos) {
+        final todo = cursorJsonMap(item);
+        final content = todo?['content'];
+        if (content is String && content.isNotEmpty) {
+          buffer.writeln('- $content');
+        }
+      }
+    }
+    buffer.writeln();
+  }
+  return buffer.toString().trim();
 }
 
 String? _firstString(List<Object?> values) {

@@ -21,7 +21,7 @@ This repository is a fork of [BaoCode](https://github.com/baocode-dev/baocode) a
    flutter run -d macos    # or windows / linux
    ```
 
-3. **Optional: pin the `agent` binary** — Settings → General → **Cursor Agent** → **Path** (`cursorAgent.path` in `settings.json`). Leave empty to search `PATH` and `~/.local/bin/agent`.
+3. **Optional: pin the `agent` binary** — Settings → General → **Cursor Agent** → **Path** (`cursorAgent.path` in `settings.json`). Leave empty to search `PATH` and `~/.local/bin/agent`. **Model** (`cursorAgent.model`) is passed as `agent --model … acp` when set.
 
 4. **Pick the kernel** — Settings → General → **Agent kernel** (Cursor Agent vs Claude Code), or use the kernel menu in the composer before the first message.
 

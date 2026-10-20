@@ -9450,6 +9450,15 @@ abstract class AppLocalizations {
   /// No description provided for @cursorAgentPathSettingDescription.
   String get cursorAgentPathSettingDescription;
 
+  /// No description provided for @cursorAgentModelSetting.
+  String get cursorAgentModelSetting;
+
+  /// No description provided for @cursorAgentModelSettingDescription.
+  String get cursorAgentModelSettingDescription;
+
+  /// No description provided for @cursorAgentModelSettingHint.
+  String get cursorAgentModelSettingHint;
+
   /// No description provided for @cursorAgentPathSettingHint.
   String get cursorAgentPathSettingHint;
 
