@@ -40,6 +40,16 @@ The [Cursor CLI](https://cursor.com/docs/cli/changelog) supports named multi-dir
 
 To create a saved name from the terminal: `agent --workspace ./repo-a --add-dir ./repo-b`, then `/save-workspace my-platform`, then in BaoCode set **CLI workspace** to `my-platform` or pass it when starting new agents.
 
+## macOS package (GitHub Actions)
+
+To build installable macOS DMGs without running the full **Release** workflow (Windows, Linux, and publish to `dl.baocode.dev`):
+
+1. Open **Actions** → **Package macOS** → **Run workflow** (branch `main`).
+2. When the run finishes, download the **`macos`** artifact.
+3. Install from `BaoCode-<version>-arm64.dmg` (Apple silicon) or `BaoCode-<version>-x64.dmg` (Intel).
+
+These builds are **ad-hoc signed** when this fork has no Apple Developer ID secrets. On your Mac, if Gatekeeper blocks the app, use **Open Anyway** in **System Settings → Privacy & Security**.
+
 ## Tests
 
 The full suite is slow; run tests for what you changed, for example:
