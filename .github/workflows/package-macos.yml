@@ -1,0 +1,87 @@
+# Builds the standard macOS edition only (DMG + update zips), for this fork.
+# Manual run: no publish to dl.baocode.dev, no release environment secrets.
+# Without Developer ID / notary secrets the app is ad-hoc signed; on another Mac
+# use Open Anyway (System Settings → Privacy & Security). Upstream full releases
+# stay on release.yml.
+name: Package macOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.5
+
+jobs:
+  check:
+    name: Check the version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Match pubspec.yaml and lib/update/version.dart
+        run: |
+          version=$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml)
+          marketing=${version%%+*}
+          code=$(sed -n "s/^const appVersionString = '\(.*\)';/\1/p" lib/update/version.dart)
+          echo "pubspec.yaml: $version ($marketing), lib/update/version.dart: $code"
+          if [ "$version" != "$code" ]; then
+            echo "::error::lib/update/version.dart says $code, pubspec.yaml $version: run tool/bump_version.dart"
+            exit 1
+          fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$ ]]; then
+            echo "::error::$version is not x.y.z+build"
+            exit 1
+          fi
+
+  remote:
+    name: Remote server
+    needs: check
+    uses: ./.github/workflows/remote.yml
+
+  macos:
+    name: Build for macOS (standard)
+    needs: [check, remote]
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: remote
+          path: build/remote
+      - name: Install create-dmg
+        run: brew install create-dmg
+      - name: Build and package (ad-hoc sign)
+        run: dart run tool/build_macos.dart --remote-built
+      - name: Launch each app, as an update installs it
+        run: |
+          softwareupdate --install-rosetta --agree-to-license > /dev/null 2>&1 || true
+          for arch in arm64 x64; do
+            dir="$RUNNER_TEMP/launch-$arch"
+            mkdir "$dir"
+            ditto -x -k build/installers/BaoCode-*-mac-$arch.zip "$dir"
+            BAOCODE_DATA_DIR="$dir-data" \
+              "$dir/BaoCode.app/Contents/MacOS/BaoCode" > "$dir.log" 2>&1 &
+            pid=$!
+            sleep 15
+            if ! kill -0 $pid 2>/dev/null; then
+              cat "$dir.log"
+              echo "::error::BaoCode ($arch) exited within 15 seconds of launch"
+              exit 1
+            fi
+            echo "BaoCode ($arch) is running after 15 seconds"
+            kill $pid
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          if-no-files-found: error
+          path: |
+            build/installers/BaoCode-*.dmg
+            build/installers/BaoCode-*-mac-*.zip
