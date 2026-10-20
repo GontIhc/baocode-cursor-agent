@@ -6,6 +6,7 @@ import '../../chat/chat_models.dart';
 import '../agent_kernel.dart';
 import '../kernel_event.dart';
 import '../kernel_types.dart';
+import 'cursor_agent_model_setting.dart';
 import 'cursor_agent_process.dart';
 import 'cursor_agent_translator.dart';
 import 'cursor_agent_transport.dart';
@@ -28,8 +29,7 @@ import 'cursor_agent_workspace.dart';
 /// `session/new` or `session/load`, `session/prompt`, `session/cancel`,
 /// `session/set_mode`, text and thought chunks, tool calls, plans, usage,
 /// permission replies, and the documented `cursor/ask_question` and
-/// `cursor/create_plan` bodies. Richer permission, question, and plan UI
-/// is still a follow-up.
+/// `cursor/create_plan` bodies.
 class CursorAgentKernel
     with KernelEventSource
     implements AgentKernel, SelectsMode {
@@ -264,6 +264,11 @@ class CursorAgentKernel
         CursorAgentLaunch(
           cwd: cwd,
           processArguments: resolved.processArguments,
+          model:
+              CursorAgentModelSetting.current() ??
+              CursorAgentModelSetting.parse(
+                _context.settings[CursorAgentModelSetting.settingKey],
+              ),
         ),
       );
       if (_disposed || epoch != _epoch) {
@@ -624,20 +629,22 @@ class CursorAgentKernel
   void _askPlan(Object? rpcId, Map<String, Object?> params) {
     final name = params['name'];
     final overview = params['overview'];
-    final plan = params['plan'];
+    final previewBody = cursorCreatePlanPreview(params);
     final title = name is String && name.isNotEmpty ? name : 'Plan';
-    final body = plan is String ? plan : '';
     final toolCallId = params['toolCallId'];
     final itemId = 'plan:${toolCallId ?? rpcId}';
-    if (body.isNotEmpty) {
-      emit(ItemUpserted(nextSeq, itemId, AssistantTextItem(body)));
+    if (previewBody.isNotEmpty) {
+      emit(ItemUpserted(nextSeq, itemId, AssistantTextItem(previewBody)));
     }
     final todos = cursorCreatePlanTodos(params);
     if (todos.isNotEmpty) emit(TodosReported(nextSeq, todos));
-    // TODO: StartsPlans / a plan file. Accepted sends Cursor's `accepted`
-    // outcome with no planUri. https://cursor.com/docs/cli/acp
+    final planUri = params['planUri'];
+    // TODO: StartsPlans / open planUri in the IDE when the CLI returns one.
     final id = 'plan:$rpcId';
-    _pending[id] = _PlanPending(rpcId);
+    _pending[id] = _PlanPending(
+      rpcId,
+      planUri: planUri is String && planUri.isNotEmpty ? planUri : null,
+    );
     emit(
       InteractionRequested(
         nextSeq,
@@ -646,7 +653,10 @@ class CursorAgentKernel
           title: title,
           toolName: 'create_plan',
           reason: overview is String && overview.isNotEmpty ? overview : null,
-          preview: body.isEmpty ? null : TextPreview(body),
+          preview: previewBody.isEmpty ? null : TextPreview(previewBody),
+          allowOnceLabel: 'Confirm plan',
+          denyLabel: 'Reject plan',
+          denyHint: 'Tell the agent what to change',
         ),
       ),
     );
@@ -698,7 +708,10 @@ class CursorAgentKernel
         'outcome': 'rejected',
         if (message != null && message.isNotEmpty) 'reason': message,
       },
-      ApprovalAnswer() => {'outcome': 'accepted'},
+      ApprovalAnswer() => {
+        'outcome': 'accepted',
+        if (pending.planUri != null) 'planUri': pending.planUri,
+      },
       _ => {'outcome': 'rejected'},
     };
     _respond(pending.rpcId, {'outcome': outcome});
@@ -880,7 +893,9 @@ final class _QuestionPending extends _Pending {
 }
 
 final class _PlanPending extends _Pending {
-  const _PlanPending(super.rpcId);
+  const _PlanPending(super.rpcId, {this.planUri});
+
+  final String? planUri;
 }
 
 /// The process this boot started was dropped by [CursorAgentKernel.restart]

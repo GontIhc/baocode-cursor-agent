@@ -5875,6 +5875,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Empty: look for `agent` on PATH, then in ~/.local/bin. A path: always that binary. (cursorAgent.path)';
 
   @override
+  String get cursorAgentModelSetting => 'Model';
+
+  @override
+  String get cursorAgentModelSettingDescription =>
+      'Passed to the CLI as `agent --model … acp`. Empty: the CLI default. (cursorAgent.model)';
+
+  @override
+  String get cursorAgentModelSettingHint => 'Default';
+
+  @override
   String get cursorAgentPathSettingHint => 'Automatic';
 
   @override

@@ -132,17 +132,28 @@ class _InteractionPanelState extends State<InteractionPanel>
           ],
         ),
     ],
-    ApprovalRequest(:final reason, :final preview, :final alwaysAllowLabel) => [
-      _Step(
-        prompt: reason ?? '',
-        detail: _ApprovalPreview(preview),
-        rows: [
-          _Row(l10n.interactionAllowOnce),
-          if (alwaysAllowLabel != null) _Row(alwaysAllowLabel),
-          _Row(l10n.interactionDeny, textHint: l10n.interactionDenyHint),
-        ],
-      ),
-    ],
+    ApprovalRequest(
+      :final reason,
+      :final preview,
+      :final alwaysAllowLabel,
+      :final allowOnceLabel,
+      :final denyLabel,
+      :final denyHint,
+    ) =>
+      [
+        _Step(
+          prompt: reason ?? '',
+          detail: _ApprovalPreview(preview),
+          rows: [
+            _Row(allowOnceLabel ?? l10n.interactionAllowOnce),
+            if (alwaysAllowLabel != null) _Row(alwaysAllowLabel),
+            _Row(
+              denyLabel ?? l10n.interactionDeny,
+              textHint: denyHint ?? l10n.interactionDenyHint,
+            ),
+          ],
+        ),
+      ],
   };
 
   InteractionAnswer _answer({required bool dismissed}) {
@@ -348,7 +359,8 @@ class _InteractionPanelState extends State<InteractionPanel>
     final (icon, color) = _icon;
     final dismiss = switch (widget.request) {
       QuestionRequest() => context.l10n.interactionSkip,
-      ApprovalRequest() => context.l10n.interactionDeny,
+      ApprovalRequest(:final denyLabel) =>
+        denyLabel ?? context.l10n.interactionDeny,
     };
     final submit = _isLast
         ? context.l10n.interactionSubmit

@@ -532,6 +532,9 @@ class ApprovalRequest extends InteractionRequest {
     this.reason,
     this.preview,
     this.alwaysAllowLabel,
+    this.allowOnceLabel,
+    this.denyLabel,
+    this.denyHint,
   });
 
   final String toolName;
@@ -543,6 +546,15 @@ class ApprovalRequest extends InteractionRequest {
   /// What "always allow" would allow, when the kernel offers it (e.g.
   /// "Auto-accept edits"); null for no such option.
   final String? alwaysAllowLabel;
+
+  /// Replaces the default "Allow once" label when set (e.g. plan confirm).
+  final String? allowOnceLabel;
+
+  /// Replaces the default "Deny" label when set.
+  final String? denyLabel;
+
+  /// Hint under the deny option; null keeps the default deny hint.
+  final String? denyHint;
 }
 
 sealed class InteractionAnswer {

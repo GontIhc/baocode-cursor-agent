@@ -5501,6 +5501,16 @@ class AppLocalizationsZh extends AppLocalizations {
       '留空则在 PATH 和 ~/.local/bin 中查找 `agent`；填写路径则固定使用该二进制。（cursorAgent.path）';
 
   @override
+  String get cursorAgentModelSetting => '模型';
+
+  @override
+  String get cursorAgentModelSettingDescription =>
+      '启动时传给 CLI：`agent --model … acp`。留空则使用 CLI 默认模型。（cursorAgent.model）';
+
+  @override
+  String get cursorAgentModelSettingHint => '默认';
+
+  @override
   String get cursorAgentPathSettingHint => '自动';
 
   @override

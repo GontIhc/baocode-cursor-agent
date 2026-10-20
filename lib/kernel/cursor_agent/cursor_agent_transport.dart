@@ -32,6 +32,7 @@ class CursorAgentLaunch {
     this.executable,
     this.throughShell = false,
     this.processArguments = const ['acp'],
+    this.model,
   });
 
   /// The project directory. Made absolute before the process starts.
@@ -45,6 +46,35 @@ class CursorAgentLaunch {
 
   /// Flags before the `acp` subcommand (`--workspace`, `--add-dir`, …).
   final List<String> processArguments;
+
+  /// When set, inserted as `--model <model>` immediately before `acp`.
+  final String? model;
+
+  /// argv for [Process.start].
+  List<String> get argv =>
+      cursorAgentLaunchArgv(processArguments, model: model);
+}
+
+/// Merges workspace flags with an optional `--model` before `acp`.
+List<String> cursorAgentLaunchArgv(
+  List<String> processArguments, {
+  String? model,
+}) {
+  final base = processArguments.isEmpty
+      ? const ['acp']
+      : List<String>.from(processArguments);
+  final modelId = model?.trim();
+  if (modelId == null || modelId.isEmpty) return base;
+  final acpIndex = base.lastIndexOf('acp');
+  if (acpIndex < 0) {
+    return [...base, '--model', modelId, 'acp'];
+  }
+  return [
+    ...base.sublist(0, acpIndex),
+    '--model',
+    modelId,
+    ...base.sublist(acpIndex),
+  ];
 }
 
 typedef CursorAgentStarter = Future<CursorAgentTransport> Function(

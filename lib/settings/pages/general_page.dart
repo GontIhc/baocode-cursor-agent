@@ -10,6 +10,7 @@ import '../../ide/ide_menu.dart';
 import '../../ide/ide_notifications.dart' show IdeSeverity;
 import '../../kernel/claude_code/claude_core_setting.dart';
 import '../../kernel/claude_code/claude_path_setting.dart';
+import '../../kernel/cursor_agent/cursor_agent_model_setting.dart';
 import '../../kernel/cursor_agent/cursor_agent_path_setting.dart';
 import '../../kernel/cursor_agent/cursor_cli_workspaces_io.dart';
 import '../../workspace/workspace.dart';
@@ -455,6 +456,25 @@ class GeneralSettingsPage extends StatelessWidget {
                       ),
                       if (workspace case final workspace?)
                         _CursorAgentWorkspaceSettings(workspace: workspace),
+                      SettingsRow(
+                        label: l10n.cursorAgentModelSetting,
+                        description: l10n.cursorAgentModelSettingDescription,
+                        trailing: SettingsTextField(
+                          value:
+                              CursorAgentModelSetting.parse(
+                                settings?[CursorAgentModelSetting.settingKey],
+                              ) ??
+                              '',
+                          hint: l10n.cursorAgentModelSettingHint,
+                          semanticLabel:
+                              'Cursor Agent ${l10n.cursorAgentModelSetting}',
+                          width: 220,
+                          onSubmitted: (model) => _write(
+                            CursorAgentModelSetting.settingKey,
+                            model.isEmpty ? null : model,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ],

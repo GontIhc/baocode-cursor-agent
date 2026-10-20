@@ -7,6 +7,18 @@ import 'package:baocode/kernel/kernel_types.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('cursorAgentLaunchArgv', () {
+    test('inserts --model before acp', () {
+      expect(
+        cursorAgentLaunchArgv(
+          const ['--workspace', 'mine', 'acp'],
+          model: 'gpt-5',
+        ),
+        ['--workspace', 'mine', '--model', 'gpt-5', 'acp'],
+      );
+    });
+  });
+
   group('resolveCursorAgent', () {
     test('uses the configured path and does not search past a miss', () {
       final found = resolveCursorAgent(
@@ -218,6 +230,36 @@ void main() {
       expect(latest.single.status, TodoStatus.inProgress);
     });
 
+    test('permission preview shows diff content from toolCall', () {
+      final choice = cursorPermissionChoice({
+        'toolCall': {
+          'toolCallId': 'call_1',
+          'title': 'Edit file',
+          'kind': 'edit',
+          'locations': [
+            {'path': '/work/lib/a.dart'},
+          ],
+          'content': [
+            {
+              'type': 'diff',
+              'path': '/work/lib/a.dart',
+              'oldText': 'a',
+              'newText': 'b',
+            },
+          ],
+        },
+        'options': [
+          {'optionId': 'allow-once', 'kind': 'allow_once'},
+          {'optionId': 'reject-once', 'kind': 'reject_once'},
+        ],
+      });
+      expect(choice.reason, '/work/lib/a.dart');
+      expect(choice.preview, isA<DiffPreview>());
+      final diff = choice.preview as DiffPreview;
+      expect(diff.path, '/work/lib/a.dart');
+      expect(diff.lines, hasLength(2));
+    });
+
     test('permission options keep Cursor ids', () {
       final choice = cursorPermissionChoice({
         'toolCall': {
@@ -246,6 +288,23 @@ void main() {
       expect(choice.alwaysAllowLabel, 'Always allow');
       expect(choice.preview, isA<CommandPreview>());
       expect((choice.preview as CommandPreview).command, 'flutter test');
+    });
+
+    test('create_plan preview includes phased todos', () {
+      final text = cursorCreatePlanPreview({
+        'plan': '# Overview',
+        'phases': [
+          {
+            'name': 'Phase 1',
+            'todos': [
+              {'content': 'Step A', 'status': 'pending'},
+            ],
+          },
+        ],
+      });
+      expect(text, contains('# Overview'));
+      expect(text, contains('Phase 1'));
+      expect(text, contains('Step A'));
     });
 
     test('ask_question keeps option ids behind the labels', () {

@@ -129,6 +129,98 @@ void main() {
     kernel.dispose();
   });
 
+  test('ask_question uses QuestionRequest with multiple picks', () async {
+    final transport = ScriptedCursorTransport(
+      onPrompt: (transport, message) {
+        transport.holdPrompt(message['id']);
+        transport.request(11, CursorAcp.askQuestion, {
+          'sessionId': 'sess_1',
+          'title': 'Pick',
+          'questions': [
+            {
+              'id': 'q1',
+              'prompt': 'Which?',
+              'allowMultiple': true,
+              'options': [
+                {'id': 'a', 'label': 'A'},
+                {'id': 'b', 'label': 'B'},
+              ],
+            },
+          ],
+        });
+      },
+    );
+    final kernel = _kernel(transport);
+    final events = <KernelEvent>[];
+    kernel.events.listen(events.add);
+    kernel.send(const KernelTurn(id: 't1', text: 'ask'));
+    await pumpEventQueue();
+
+    final request = events.whereType<InteractionRequested>().single.request;
+    expect(request, isA<QuestionRequest>());
+    final questions = (request as QuestionRequest).questions;
+    expect(questions.single.allowMultiple, isTrue);
+    kernel.answer(
+      request.id,
+      const QuestionAnswer([
+        ['A', 'B'],
+      ]),
+    );
+    await pumpEventQueue();
+
+    final response = transport.written.lastWhere(
+      (message) => message['method'] == null && message.containsKey('result'),
+    );
+    expect(response['result'], {
+      'outcome': {
+        'outcome': 'answered',
+        'answers': [
+          {'questionId': 'q1', 'selectedOptionIds': ['a', 'b']},
+        ],
+      },
+    });
+    kernel.dispose();
+  });
+
+  test('create_plan confirm returns accepted with planUri', () async {
+    final transport = ScriptedCursorTransport(
+      onPrompt: (transport, message) {
+        transport.holdPrompt(message['id']);
+        transport.request(12, CursorAcp.createPlan, {
+          'sessionId': 'sess_1',
+          'name': 'My plan',
+          'overview': 'Do things',
+          'plan': '## Steps\n1. One',
+          'planUri': 'file:///tmp/plan.md',
+        });
+      },
+    );
+    final kernel = _kernel(transport);
+    final events = <KernelEvent>[];
+    kernel.events.listen(events.add);
+    kernel.send(const KernelTurn(id: 't1', text: 'plan'));
+    await pumpEventQueue();
+
+    final request = events.whereType<InteractionRequested>().single.request;
+    expect(request, isA<ApprovalRequest>());
+    final approval = request as ApprovalRequest;
+    expect(approval.allowOnceLabel, 'Confirm plan');
+    expect(approval.preview, isA<TextPreview>());
+    kernel.answer(request.id, const ApprovalAnswer(ApprovalDecision.allowOnce));
+    await pumpEventQueue();
+
+    final response = transport.written.lastWhere(
+      (message) => message['method'] == null && message.containsKey('result'),
+    );
+    expect(response['result'], {
+      'outcome': {
+        'outcome': 'accepted',
+        'planUri': 'file:///tmp/plan.md',
+      },
+    });
+    kernel.dispose();
+  });
+
   test('cancel notifies session/cancel and cancels the permission', () async {
     final transport = ScriptedCursorTransport(
       onPrompt: (transport, message) {
