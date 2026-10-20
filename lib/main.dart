@@ -42,6 +42,7 @@ import 'kernel/claude_code/claude_core_setting.dart';
 import 'kernel/claude_code/claude_onboarding.dart';
 import 'kernel/claude_code/claude_path_setting.dart';
 import 'kernel/cursor_agent/cursor_agent_path_setting.dart';
+import 'kernel/cursor_agent/cursor_agent_process.dart';
 import 'kernel/claude_code/process_transport.dart';
 import 'kernel/claude_code/turn_stats_stub.dart'
     if (dart.library.io) 'kernel/claude_code/turn_stats_io.dart'
@@ -140,6 +141,7 @@ Future<void> main(List<String> arguments) async {
     EventLog.current = EventLog(DataDirectory.current.logsDir);
   }
   unawaited(reapClaudeProcesses());
+  unawaited(reapCursorAgentProcesses());
   unawaited(reapLspProcesses());
   unawaited(reapPtyProcesses());
   WidgetsFlutterBinding.ensureInitialized();
@@ -298,6 +300,17 @@ Future<void> main(List<String> arguments) async {
   // is settings.json's `workbench.colorTheme`, the theme's colors the
   // workspace's state.
   await workspace.restored;
+  if (!kIsWeb) {
+    final agentAvailable = await cursorAgentInstalled();
+    workspace.applyStartupKernelDefault(
+      cursorAgentAvailable: agentAvailable,
+      fallbackNotice: agentAvailable
+          ? null
+          : lookupAppLocalizations(
+              locale.locale ?? AppLocale.systemLocale(),
+            ).cursorAgentStartupFallback,
+    );
+  }
   // The app's windows: the chat's, and the IDE's own, one per folder,
   // where the system can open them (see lib/window/).
   final windows = AppWindows(
@@ -414,6 +427,7 @@ Future<void> main(List<String> arguments) async {
       diagnostics: DiagnosticsUploader.platform(),
       workspace: workspace,
       claudeStatus: localClaudeStatus,
+      cursorAgentStatus: localCursorAgentStatus,
       link: link,
       customizations: customizations,
     );
@@ -690,6 +704,7 @@ class _BaoCodeAppState extends State<BaoCodeApp> {
       }
       await Future.wait([
         stopClaudeProcesses(),
+        stopCursorAgentProcesses(),
         RemoteClaudeTransport.stopAll(),
         stopModelProxy(),
         stopLspProcesses(),
@@ -794,7 +809,7 @@ class _BaoCodeAppState extends State<BaoCodeApp> {
   /// A window's app: its own navigator, dialogs, overlay and focus; what
   /// it shows built anew as its folder changes.
   Widget _app(AppWindow window) => MaterialApp(
-    title: 'BaoCode',
+    title: 'BaoCode · Cursor Agent',
     debugShowCheckedModeBanner: false,
     theme: buildAppTheme(),
     builder: (context, child) => ValueListenableBuilder<int>(

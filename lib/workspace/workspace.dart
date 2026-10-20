@@ -1042,6 +1042,42 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   KernelDescriptor get preferredKernel => _preferredKernel;
   KernelDescriptor _preferredKernel;
 
+  /// Whether [load] read a kernel from preferences; when false,
+  /// [applyStartupKernelDefault] may pick one.
+  bool _kernelRestoredFromStore = false;
+
+  /// Shown once after launch when Cursor Agent was not found and Claude
+  /// Code is the default kernel instead.
+  String? kernelStartupNotice;
+
+  set preferredKernel(KernelDescriptor kernel) {
+    if (kernel == _preferredKernel) return;
+    _preferredKernel = kernel;
+    _save();
+    notifyListeners();
+  }
+
+  /// Picks the default kernel for a first run, or when preferences had no
+  /// kernel yet. Cursor Agent when [cursorAgentAvailable], else Claude Code.
+  void applyStartupKernelDefault({
+    required bool cursorAgentAvailable,
+    String? fallbackNotice,
+  }) {
+    if (_kernelRestoredFromStore) return;
+    preferredKernel = cursorAgentAvailable
+        ? kernels.firstWhere(
+            (k) => k.id == KernelRegistry.cursorAgent.id,
+            orElse: () => kernels.first,
+          )
+        : kernels.firstWhere(
+            (k) => k.id == KernelRegistry.claudeCode.id,
+            orElse: () => kernels.first,
+          );
+    if (!cursorAgentAvailable && fallbackNotice != null) {
+      kernelStartupNotice = fallbackNotice;
+    }
+  }
+
   /// The mode, model, context and effort a new agent starts with: the
   /// last ones picked.
   Map<String, String> get _preferredSettings => Map.unmodifiable(_settings);
@@ -1919,6 +1955,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     if (kernels.where((k) => k.id == kept['kernel']).firstOrNull
         case final kernel?) {
       _preferredKernel = kernel;
+      _kernelRestoredFromStore = true;
     }
     // The file manager was kept as `finder` before it was `folder`.
     final editor = kept['editor'] == 'finder'

@@ -1,9 +1,12 @@
-# BaoCode
+# BaoCode (Cursor Agent fork)
+
+**This fork** targets the **[Cursor Agent CLI](https://cursor.com/docs/cli/overview)** (`agent acp`) as the default agent kernel, with a fast desktop UI and built-in IDE. [Claude Code](https://github.com/anthropics/claude-code) remains available when you need it. Upstream BaoCode branding and docs still apply in many places; see [CONTRIBUTING.md](CONTRIBUTING.md) for install and settings on this fork.
+
 <a href="https://trendshift.io/repositories/289180?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-289180" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/289180/daily?language=Dart" alt="baocode-dev%2Fbaocode | Trendshift" width="250" height="55"/></a>
 
 **English** · [简体中文](README_CN.md) · [日本語](README_JA.md) · [Français](README_FR.md) · [Español](README_ES.md)
 
-An awesome, easy-to-use desktop UI for [Claude Code](https://github.com/anthropics/claude-code), with a millisecond-fast IDE built in.
+An awesome, easy-to-use desktop UI for coding agents — **Cursor Agent** on this fork, with [Claude Code](https://github.com/anthropics/claude-code) as an alternate kernel — and a millisecond-fast IDE built in.
 
 [Website](https://baocode.dev) · [Download](https://baocode.dev/download) · [Changelog](https://baocode.dev/changelog)
 
@@ -42,7 +45,13 @@ VS Code and Cursor are built on Electron: each window is a web page, and every c
 ## Requirements
 
 - macOS 12 or later (Apple silicon or Intel, one download each), Windows 10 or later (x64), or Linux: Ubuntu 22.04 or later and other Debian-based distributions (x64 or arm64, a .deb each).
-- [Claude Code](https://github.com/anthropics/claude-code), installed.
+- **[Cursor Agent CLI](https://cursor.com/docs/cli/installation)** (`agent` on your `PATH`, or set `cursorAgent.path` in settings). Install with:
+
+  ```sh
+  curl https://cursor.com/install -fsS | bash
+  ```
+
+- Optional: [Claude Code](https://github.com/anthropics/claude-code) if you switch the kernel to Claude Code in Settings → General.
 
 ## Building from source
 

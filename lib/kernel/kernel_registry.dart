@@ -27,8 +27,8 @@ abstract final class KernelRegistry {
     catalog: const ClaudeCatalog(),
   );
 
-  /// Cursor Agent CLI (`agent acp`) over stdio JSON-RPC. Claude Code stays
-  /// the default; this is a second choice.
+  /// Cursor Agent CLI (`agent acp`) over stdio JSON-RPC. On this fork it is
+  /// the default when the `agent` binary is on the machine.
   static final KernelDescriptor cursorAgent = KernelDescriptor(
     id: 'cursor-agent',
     label: 'Cursor Agent',
@@ -37,7 +37,7 @@ abstract final class KernelRegistry {
     create: (context) => CursorAgentKernel(cursorAgent, context),
   );
 
-  static List<KernelDescriptor> _all = [claudeCode, cursorAgent];
+  static List<KernelDescriptor> _all = [cursorAgent, claudeCode];
 
   static List<KernelDescriptor> get all => _all;
 
