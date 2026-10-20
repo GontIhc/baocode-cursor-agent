@@ -296,7 +296,7 @@ class CursorAgentKernel
           'fs': {'readTextFile': false, 'writeTextFile': false},
           'terminal': false,
         },
-        'clientInfo': const {'name': 'baocode', 'version': '1.5.0'},
+        'clientInfo': const {'name': 'baocursor', 'version': '1.5.0'},
       }, timeout: const Duration(seconds: 20));
       _readCapabilities(initialized);
       try {

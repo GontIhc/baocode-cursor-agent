@@ -1,6 +1,8 @@
-# Contributing (Cursor Agent fork)
+# Contributing to BaoCursor
 
-This repository is a fork of [BaoCode](https://github.com/baocode-dev/baocode) aimed at a **personal desktop shell for the [Cursor Agent CLI](https://cursor.com/docs/cli/overview)** only. **Claude Code is not offered** as an agent kernel in this build; sessions use Cursor Agent (`agent acp`) over stdio.
+**BaoCursor** is a fork of [BaoCode](https://github.com/baocode-dev/baocode) (GPL): a **personal desktop shell for the [Cursor Agent CLI](https://cursor.com/docs/cli/overview)** only. **Claude Code is not offered** as an agent kernel in this build; sessions use Cursor Agent (`agent acp`) over stdio.
+
+Feature parity vs the upstream Claude adapter is documented in [docs/CURSOR_CLI_PARITY.md](docs/CURSOR_CLI_PARITY.md).
 
 ## Quick start
 
@@ -27,18 +29,18 @@ If the CLI is missing, the app shows an install hint at launch and when you star
 
 ## Transport
 
-Cursor Agent sessions use **ACP** (`agent acp` over stdio JSON-RPC). This fork does not drive Cursor through Claude Code’s `stream-json` control channel.
+Cursor Agent sessions use **ACP** (`agent acp` over stdio JSON-RPC). This fork does not drive agents through Claude Code’s `stream-json` control channel.
 
 ## Multi-repo workspaces (Cursor CLI)
 
 The [Cursor CLI](https://cursor.com/docs/cli/changelog) supports named multi-directory workspaces:
 
-- **Launch flags** — BaoCode starts `agent` with global flags before `acp`: `agent --workspace <name> acp`, or `agent --add-dir <path> … acp` when no name is set (primary cwd is still the project folder you picked).
+- **Launch flags** — BaoCursor starts `agent` with global flags before `acp`: `agent --workspace <name> acp`, or `agent --add-dir <path> … acp` when no name is set (primary cwd is still the project folder you picked).
 - **Settings** — Settings → General → **Cursor Agent** → **CLI workspace** and **Extra roots** (`cursorAgent.workspace` / `cursorAgent.extraDirectories` in the app preference store). The same controls appear over a new Cursor Agent chat before the first message.
-- **Sidebar** — With Cursor Agent selected, the sidebar shows the active named workspace and root folders.
+- **Sidebar** — The sidebar shows the active named workspace and root folders for Cursor Agent chats.
 - **Slash commands** — Messages such as `/save-workspace my-platform` or `/load-workspace my-platform` are sent through ACP `session/prompt` unchanged; the CLI handles them when supported.
 
-To create a saved name from the terminal: `agent --workspace ./repo-a --add-dir ./repo-b`, then `/save-workspace my-platform`, then in BaoCode set **CLI workspace** to `my-platform` or pass it when starting new agents.
+To create a saved name from the terminal: `agent --workspace ./repo-a --add-dir ./repo-b`, then `/save-workspace my-platform`, then in BaoCursor set **CLI workspace** to `my-platform` or pass it when starting new agents.
 
 ## macOS package (GitHub Actions)
 
@@ -46,7 +48,7 @@ To build installable macOS DMGs without running the full **Release** workflow (W
 
 1. Open **Actions** → **Package macOS** → **Run workflow** (branch `main`).
 2. When the run finishes, download the **`macos`** artifact.
-3. Install from `BaoCode-<version>-arm64.dmg` (Apple silicon) or `BaoCode-<version>-x64.dmg` (Intel).
+3. Install from `BaoCursor-<version>-arm64.dmg` (Apple silicon) or `BaoCursor-<version>-x64.dmg` (Intel).
 
 These builds are **ad-hoc signed** when this fork has no Apple Developer ID secrets. On your Mac, if Gatekeeper blocks the app, use **Open Anyway** in **System Settings → Privacy & Security**.
 

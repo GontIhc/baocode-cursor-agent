@@ -1,6 +1,6 @@
 {
-    "name": "BaoCode",
-    "short_name": "BaoCode",
+    "name": "BaoCursor",
+    "short_name": "BaoCursor",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0D0C08",

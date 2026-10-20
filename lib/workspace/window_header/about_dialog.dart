@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../branding/product_branding.dart';
 import '../../chat/panels/interaction_panel.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
@@ -59,7 +60,7 @@ class _AboutBaoCodeDialog extends StatelessWidget {
                 ),
                 SizedBox(width: 10),
                 Text(
-                  'BaoCode',
+                  productDisplayName,
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,

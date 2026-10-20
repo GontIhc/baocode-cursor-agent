@@ -5,13 +5,13 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = BaoCode
+PRODUCT_NAME = BaoCursor
 
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = dev.baocode.desktop
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 BaoCode. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 BaoCursor contributors. Based on BaoCode (GPL).
 
 // This machine's own settings, if it has them (not checked in): a debug
 // build signed with a developer's certificate, say, for macOS to keep the

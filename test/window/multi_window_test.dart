@@ -98,7 +98,7 @@ void main() {
     expect(_inView(0, find.byType(IdeWorkbench)), findsNothing);
     expect(window.delegate, isNotNull);
     expect(window.delegate!.ideSpace, isNotNull);
-    expect(host.titles[window.viewId], 'baocode — BaoCode');
+    expect(host.titles[window.viewId], 'baocode — BaoCursor');
 
     // Asking the IDE in the chat's window goes to the IDE's.
     workspace.layout = WorkspaceLayout.ide;
@@ -128,7 +128,7 @@ void main() {
     expect(title.current, same(thread));
   });
 
-  _testWindows('an agent\'s window (Open with BaoCode): its agent\'s '
+  _testWindows('an agent\'s window (Open with BaoCursor): its agent\'s '
       'conversation, a view of its own; closed, it goes', (tester) async {
     final (windows, host, workspace) = await _pumpApp(tester);
     final opening = windows.openAgent(['~/code/baocode']);

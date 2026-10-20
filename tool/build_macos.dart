@@ -21,9 +21,9 @@
 //                                                fetch_remote_server.dart)
 //                                                instead of building one
 //
-// They land in build/installers/: BaoCode-<version>-<arch>.dmg and
-// BaoCode-<version>-mac-<arch>.zip, arch arm64 or x64 (the channel
-// build's ending in -channel: BaoCode-<version>-<arch>-channel.dmg…); beside them,
+// They land in build/installers/: BaoCursor-<version>-<arch>.dmg and
+// BaoCursor-<version>-mac-<arch>.zip, arch arm64 or x64 (the channel
+// build's ending in -channel: BaoCursor-<version>-<arch>-channel.dmg…); beside them,
 // remote/<VERSION>/, the remote server's gzipped builds, which the app
 // downloads instead of carrying them (tool/build_remote_server.dart), to
 // upload with the release.
@@ -44,7 +44,7 @@
 // files put in it after flutter signed it have to be sealed too, or the
 // signature is broken and the app refuses the update (lib/update/
 // installer_io.dart checks it). Ad hoc, it opens on this machine; Gatekeeper
-// refuses it on anyone else's ("BaoCode is damaged and can't be opened").
+// refuses it on anyone else's ("BaoCursor is damaged and can't be opened").
 // Signed but not notarised, it is refused too, with another message.
 import 'dart:convert';
 import 'dart:io';
@@ -52,7 +52,7 @@ import 'dart:io';
 /// Where the .app flutter leaves behind goes, and where the disk image is
 /// written. Under build/, which the repository already ignores and flutter
 /// clean already removes.
-const _bundleRelative = 'build/macos/Build/Products/Release/BaoCode.app';
+const _bundleRelative = 'build/macos/Build/Products/Release/BaoCursor.app';
 const _installersRelative = 'build/installers';
 
 /// Where each architecture's app is made of the universal one.
@@ -78,7 +78,7 @@ const _browserHost = 'baocode-browser-host';
 /// failed late still leaves an .app behind that looks complete — these are
 /// what tell the difference.
 const _required = [
-  'Contents/MacOS/BaoCode',
+  'Contents/MacOS/BaoCursor',
   'Contents/Info.plist',
   'Contents/Frameworks/FlutterMacOS.framework',
   'Contents/Frameworks/App.framework',
@@ -88,7 +88,7 @@ const _required = [
   // Finder's context menu (macos/FinderExtension), which Settings → General
   // turns on.
   'Contents/PlugIns/FinderExtension.appex',
-  // What Chrome runs for BaoCode's extension (macos/BrowserBridge).
+  // What Chrome runs for BaoCursor's extension (macos/BrowserBridge).
   'Contents/MacOS/$_browserHost',
   // The server remote projects run on their host (Linux and macOS, x64 and
   // arm64; tool/build_remote_server.dart): which build, and where it is
@@ -203,7 +203,7 @@ Future<void> main(List<String> arguments) async {
   final made = <File>[];
   for (final MapEntry(key: lipoArch, value: arch) in _architectures.entries) {
     _step('Making the $arch app');
-    final app = Directory('${root.path}/$_thinRelative/$arch/BaoCode.app');
+    final app = Directory('${root.path}/$_thinRelative/$arch/BaoCursor.app');
     if (app.parent.existsSync()) app.parent.deleteSync(recursive: true);
     app.parent.createSync(recursive: true);
     await _run('ditto', ['--arch', lipoArch, bundle.path, app.path], root.path);
@@ -215,7 +215,7 @@ Future<void> main(List<String> arguments) async {
 
     _step('Making the $arch disk image');
     final dmg = File(
-      '${installers.path}/BaoCode-${version.marketing}-$arch$edition.dmg',
+      '${installers.path}/BaoCursor-${version.marketing}-$arch$edition.dmg',
     );
     // A window with the app, an arrow and an Applications shortcut to drag
     // it onto, on the background tool/dmg_background.swift draws (the
@@ -224,7 +224,7 @@ Future<void> main(List<String> arguments) async {
     if (dmg.existsSync()) dmg.deleteSync();
     await _run(createDmg, [
       '--volname',
-      'BaoCode ${version.marketing}',
+      'BaoCursor ${version.marketing}',
       '--background',
       '${root.path}/$_dmgBackgroundRelative',
       '--window-size',
@@ -233,11 +233,11 @@ Future<void> main(List<String> arguments) async {
       '--icon-size',
       '128',
       '--icon',
-      'BaoCode.app',
+      'BaoCursor.app',
       '165',
       '145',
       '--hide-extension',
-      'BaoCode.app',
+      'BaoCursor.app',
       '--app-drop-link',
       '495',
       '145',
@@ -268,7 +268,7 @@ Future<void> main(List<String> arguments) async {
     // permissions and extended attributes, which a framework's signature
     // depends on).
     final zip = File(
-      '${installers.path}/BaoCode-${version.marketing}-mac-$arch$edition.zip',
+      '${installers.path}/BaoCursor-${version.marketing}-mac-$arch$edition.zip',
     );
     if (zip.existsSync()) zip.deleteSync();
     await _run('ditto', [
@@ -302,7 +302,7 @@ Future<void> main(List<String> arguments) async {
     final mb = (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1);
     stdout.writeln('  ${file.path}  ($mb MB)');
   }
-  final base = '${installers.path}/BaoCode-${version.marketing}';
+  final base = '${installers.path}/BaoCursor-${version.marketing}';
   stdout.writeln();
   if (servers.isEmpty) {
     stdout
@@ -497,7 +497,7 @@ String _bundleRemote(Directory remote, Directory target) {
 /// The executables in [app]: its own, the browser's host, the Finder
 /// extension's, and each framework's.
 List<String> _executables(Directory app) => [
-  '${app.path}/Contents/MacOS/BaoCode',
+  '${app.path}/Contents/MacOS/BaoCursor',
   '${app.path}/Contents/MacOS/$_browserHost',
   '${app.path}/Contents/PlugIns/FinderExtension.appex/Contents/MacOS/'
       'FinderExtension',

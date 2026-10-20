@@ -11,6 +11,7 @@ import 'package:bao_editor/textmate/textmate_syntax.dart';
 
 import 'package:bao_editor/monaco/flutter/language_assets.dart';
 
+import 'branding/product_branding.dart';
 import 'browser/browser_bridge.dart';
 import 'browser/browser_tools.dart' show BrowserHistory;
 import 'chat/composer/composer_files.dart' show ComposerFile, pastedAsPicture;
@@ -812,7 +813,7 @@ class _BaoCodeAppState extends State<BaoCodeApp> {
   /// A window's app: its own navigator, dialogs, overlay and focus; what
   /// it shows built anew as its folder changes.
   Widget _app(AppWindow window) => MaterialApp(
-    title: 'BaoCode · Cursor Agent',
+    title: '$productDisplayName · Cursor Agent',
     debugShowCheckedModeBanner: false,
     theme: buildAppTheme(),
     builder: (context, child) => ValueListenableBuilder<int>(

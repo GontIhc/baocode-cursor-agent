@@ -7,6 +7,7 @@
 // so tests and the glue override only what they have.
 
 import '../../base/uri.dart' show VsUri;
+import '../../branding/product_branding.dart';
 
 import '../common/debug_model.dart';
 import '../common/debug_types.dart';
@@ -113,7 +114,7 @@ final class DebugPickItem<T> {
 
 /// The IDE, as the debug service sees it.
 class DebugServiceHost {
-  String get productName => 'BaoCode';
+  String get productName => productDisplayName;
 
   String get locale => 'en';
 

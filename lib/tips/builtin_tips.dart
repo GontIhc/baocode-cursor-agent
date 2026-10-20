@@ -1,3 +1,4 @@
+import '../branding/product_branding.dart';
 import '../ide/ide_notifications.dart' show IdeSeverity;
 import '../l10n/l10n.dart';
 import '../platform/app_platform.dart';
@@ -42,7 +43,7 @@ List<FeatureTip> builtInFeatureTips(AppSettings settings) => [
       final l10n = at.context.l10n;
       try {
         await ContextMenu.install((
-          agent: l10n.contextMenuOpenWith('BaoCode'),
+          agent: l10n.contextMenuOpenWith(productDisplayName),
           ide: l10n.contextMenuOpenWith('Fast Ide'),
         ));
       } on ContextMenuException catch (error) {
