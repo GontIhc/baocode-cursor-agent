@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../kernel/kernel_types.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
+import '../../workspace/editor_launcher.dart';
 import 'interaction_panel.dart';
 
 /// Says why the agent's runtime cannot run (not installed, not logged in,
@@ -17,12 +21,16 @@ class HealthBanner extends StatefulWidget {
     required this.kernelName,
     required this.onRetry,
     this.onSetUpModel,
+    this.projectPath,
   });
 
   final KernelHealth health;
   final String kernelName;
   final VoidCallback onRetry;
   final VoidCallback? onSetUpModel;
+
+  /// Project folder, used to open Terminal beside `agent login`.
+  final String? projectPath;
 
   static bool shows(KernelHealth health) =>
       health.status == KernelHealthStatus.failed;
@@ -33,6 +41,19 @@ class HealthBanner extends StatefulWidget {
 
 class _HealthBannerState extends State<HealthBanner> {
   bool _details = false;
+  bool _copied = false;
+
+  /// Copies `agent login` and opens Terminal in the project when there is
+  /// one. The command is what ACP authenticate actually needs.
+  Future<void> _signIn() async {
+    setState(() => _copied = true);
+    await Clipboard.setData(const ClipboardData(text: 'agent login'));
+    if (!mounted) return;
+    final path = widget.projectPath?.trim();
+    if (path != null && path.isNotEmpty) {
+      await openInEditor(Editor.terminal, path);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +61,12 @@ class _HealthBannerState extends State<HealthBanner> {
     if ((health.noModel, widget.onSetUpModel) case (true, final setUp?)) {
       return _NoModel(onSetUp: setUp);
     }
-    final detail = health.detail?.trim();
+    final needsSignIn = health.needsSignIn;
+    final rawDetail = health.detail?.trim();
+    final detail = (rawDetail != null && rawDetail.isNotEmpty)
+        ? rawDetail
+        : (needsSignIn ? health.message?.trim() : null);
+    final shownDetail = detail != null && detail.isNotEmpty ? detail : null;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 9, 10, 9),
       decoration: BoxDecoration(
@@ -64,6 +90,7 @@ class _HealthBannerState extends State<HealthBanner> {
                 child: Text(
                   switch (health.missingFolder) {
                     final folder? => context.l10n.healthFolderGone(folder),
+                    null when needsSignIn => context.l10n.healthNeedsSignIn,
                     null =>
                       health.message ??
                           context.l10n.healthStopped(widget.kernelName),
@@ -74,7 +101,7 @@ class _HealthBannerState extends State<HealthBanner> {
                   ),
                 ),
               ),
-              if (detail != null && detail.isNotEmpty) ...[
+              if (shownDetail != null) ...[
                 PanelButton(
                   label: _details
                       ? context.l10n.healthHideDetails
@@ -83,14 +110,36 @@ class _HealthBannerState extends State<HealthBanner> {
                 ),
                 const SizedBox(width: 6),
               ],
+              if (needsSignIn) ...[
+                PanelButton(
+                  label: _copied
+                      ? context.l10n.healthSignInCopied
+                      : context.l10n.healthSignIn,
+                  primary: true,
+                  onTap: () => unawaited(_signIn()),
+                ),
+                const SizedBox(width: 6),
+              ],
               PanelButton(
                 label: context.l10n.healthRetry,
-                primary: true,
+                primary: !needsSignIn,
                 onTap: widget.onRetry,
               ),
             ],
           ),
-          if (_details && detail != null)
+          if (needsSignIn)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 23),
+              child: Text(
+                context.l10n.healthSignInHint,
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11.5,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          if (_details && shownDetail != null)
             Container(
               margin: const EdgeInsets.only(top: 8),
               constraints: const BoxConstraints(maxHeight: 160),
@@ -101,7 +150,7 @@ class _HealthBannerState extends State<HealthBanner> {
               ),
               child: SingleChildScrollView(
                 child: SelectableText(
-                  detail,
+                  shownDetail,
                   style: TextStyle(
                     color: AppColors.textMuted,
                     fontFamily: AppFonts.mono,

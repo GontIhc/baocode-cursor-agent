@@ -29,6 +29,7 @@ import 'composer/composer_embeds.dart';
 import 'composer/composer_mock_data.dart';
 import 'composer/file_mentions.dart';
 import 'panels/activity_strip.dart';
+import 'panels/cli_history_empty.dart';
 import 'panels/health_banner.dart';
 import 'panels/interaction_panel.dart';
 import 'panels/context_usage_panel.dart';
@@ -758,6 +759,27 @@ class _ChatScreenState extends State<ChatScreen>
                             ? const _HistoryLoading()
                             : const SizedBox.shrink(),
                       ),
+                      ListenableBuilder(
+                        listenable: _session,
+                        builder: (context, _) {
+                          if (_session.loadingHistory ||
+                              !_session.historyUnavailable ||
+                              _session.hasConversation) {
+                            return const SizedBox.shrink();
+                          }
+                          return Align(
+                            alignment: Alignment.center,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                              child: _ConversationColumn(
+                                maxWidth: _maxContentWidth,
+                                minimap: false,
+                                child: const CliHistoryEmpty(),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -790,6 +812,7 @@ class _ChatScreenState extends State<ChatScreen>
                         ? HealthBanner(
                             health: _session.health,
                             kernelName: _session.kernel.label,
+                            projectPath: _session.kernelContext.cwd,
                             onRetry: _session.restart,
                             onSetUpModel: () =>
                                 unawaited(showModelWelcome(context)),

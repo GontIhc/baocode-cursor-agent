@@ -23,12 +23,13 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('says what BaoCode is, which build, and where it is made', (
+  testWidgets('says what BaoCursor is, which build, and where it is made', (
     tester,
   ) async {
     await show(tester, const Locale('zh'));
     expect(find.text('关于'), findsOneWidget);
-    expect(find.text('BaoCode'), findsOneWidget);
+    expect(find.text('BaoCursor'), findsOneWidget);
+    expect(find.text('BaoCode'), findsNothing);
     expect(
       find.text(
         '版本 ${currentAppVersion.marketing}（${currentAppVersion.build}）',

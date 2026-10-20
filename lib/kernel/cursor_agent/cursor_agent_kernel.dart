@@ -34,7 +34,12 @@ import 'cursor_agent_workspace.dart';
 /// `cursor/ask_question` and `cursor/create_plan` bodies.
 class CursorAgentKernel
     with KernelEventSource
-    implements AgentKernel, SelectsMode, SelectsModel, ConfirmsModelSwitch {
+    implements
+        AgentKernel,
+        SelectsMode,
+        SelectsModel,
+        ConfirmsModelSwitch,
+        ReportsUnloadedHistory {
   CursorAgentKernel(this.descriptor, this._context, {CursorAgentStarter? start})
     : _start = start ?? startCursorAgent {
     mode = LocalChoice([...modes], onChanged: _modeChanged);
@@ -111,6 +116,11 @@ class CursorAgentKernel
   late final CursorAgentTranslator _translator;
 
   KernelHealth _health = KernelHealth.idle;
+
+  /// A CLI session was opened and `session/load` was missing, failed, or
+  /// replayed no transcript.
+  @override
+  bool historyUnavailable = false;
   CursorAgentTransport? _transport;
   StreamSubscription<Map<String, Object?>>? _subscription;
   Future<void>? _booting;
@@ -326,13 +336,10 @@ class CursorAgentKernel
           'methodId': CursorAcp.authMethod,
         }, timeout: const Duration(minutes: 2));
       } on CursorAgentRpcException catch (error) {
-        // TODO: confirm whether an already logged-in CLI still requires
-        // this call, or rejects it. The published minimal client always
-        // sends it. https://cursor.com/docs/cli/acp
-        throw CursorAgentRpcException(
-          '${error.message}\nSign in with `agent login`, or set CURSOR_API_KEY.',
-          code: error.code,
-        );
+        // The published minimal client always sends authenticate.
+        // https://cursor.com/docs/cli/acp
+        // An API key does not satisfy this call; the user runs `agent login`.
+        throw CursorAgentAuthRequired(error.message);
       }
       await _openSession();
       if (_disposed || epoch != _epoch) throw const _BootCancelled();
@@ -355,6 +362,9 @@ class CursorAgentKernel
 
   Future<void> _openSession() async {
     final resume = _sessionId ?? _context.resume?.id;
+    final wanted = resume != null && resume.isNotEmpty;
+    historyUnavailable = false;
+    _translator.replayedTranscript = false;
     final params = <String, Object?>{
       'cwd': _transport!.cwd,
       'mcpServers': const <Object?>[],
@@ -368,7 +378,7 @@ class CursorAgentKernel
         params['additionalDirectories'] = extra;
       }
     }
-    if (resume != null && resume.isNotEmpty && _loadSession) {
+    if (wanted && _loadSession) {
       _sessionId = resume;
       _translator.replaying = true;
       try {
@@ -378,25 +388,21 @@ class CursorAgentKernel
         }, timeout: const Duration(seconds: 30));
         _noteModes(loaded);
         _noteConfig(loaded['configOptions'] ?? loaded);
+        // Load can succeed and still replay nothing. The chat must say so
+        // instead of looking blank.
+        historyUnavailable = !_translator.replayedTranscript;
         return;
-      } on CursorAgentRpcException catch (error) {
+      } on CursorAgentRpcException {
         _sessionId = null;
-        _notice(
-          'Could not load Cursor session $resume (${error.message}). '
-          'Its history stays in the CLI store. Starting a new session.',
-        );
+        historyUnavailable = true;
       } finally {
         _translator.replaying = false;
       }
-    } else if (resume != null && resume.isNotEmpty && !_loadSession) {
+    } else if (wanted && !_loadSession) {
       // TODO: `session/resume` (no replay) when the CLI advertises
       // sessionCapabilities.resume. Cursor's page names `session/load`
       // and not `session/resume`. https://cursor.com/docs/cli/acp
-      _notice(
-        'This Cursor Agent build did not offer session/load, so this CLI '
-        'chat cannot be resumed. Its history stays in the Cursor CLI '
-        'store. This is a new session.',
-      );
+      historyUnavailable = true;
     }
     final created = await _request(
       CursorAcp.sessionNew,
@@ -980,7 +986,13 @@ class CursorAgentKernel
   }
 
   void _fail(Object error) {
+    final needsSignIn = error is CursorAgentAuthRequired;
     final (message, detail, folder) = switch (error) {
+      CursorAgentAuthRequired(:final message) => (
+        message.isEmpty ? 'Sign in with agent login' : message,
+        null,
+        null,
+      ),
       CursorAgentFolderGone(:final folder) => (
         'The project folder is not there',
         null,
@@ -999,6 +1011,7 @@ class CursorAgentKernel
       message: message,
       detail: detail,
       missingFolder: folder,
+      needsSignIn: needsSignIn,
     );
     emitInfoChanged();
   }
@@ -1054,6 +1067,17 @@ final class _PlanPending extends _Pending {
 /// or [CursorAgentKernel.dispose].
 final class _BootCancelled implements Exception {
   const _BootCancelled();
+}
+
+/// ACP `authenticate` failed. The user needs `agent login`; an API key
+/// alone does not satisfy that call.
+final class CursorAgentAuthRequired implements Exception {
+  const CursorAgentAuthRequired(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 final class _CursorModelChoice implements KernelChoiceSource {

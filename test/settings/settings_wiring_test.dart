@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:baocode/ide/ide_notifications.dart';
-import 'package:baocode/kernel/commit_attribution.dart';
 import 'package:baocode/keybindings/import_dialog.dart';
 import 'package:bao_editor/monaco/flutter/keybinding_entry.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
@@ -297,8 +296,7 @@ void main() {
     expect(keyboard.editing.file, same(files.keybindings));
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-  testWidgets('the commit attribution is kept in settings.json, the '
-      'default unwritten', (tester) async {
+  testWidgets('Claude-only general rows are hidden', (tester) async {
     await tester.runAsync(start);
     await pumpApp(tester);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
@@ -306,38 +304,11 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
     await tester.pumpAndSettle();
     expect(find.byType(GeneralSettingsPage), findsOneWidget);
-    // The main window's comes first.
-    final dropdown = find.byType(SettingsDropdown).at(1);
-    expect(tester.widget<SettingsDropdown>(dropdown).current, 'BaoCode');
-    expect(find.text(CommitAttribution.baoCodeCommit), findsOneWidget);
-
-    Future<void> choose(String label) async {
-      await tester.tap(dropdown);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(label).last);
-      await tester.pumpAndSettle();
-    }
-
-    await choose('None');
-    await settle(
-      tester,
-      () => files.settings[CommitAttribution.settingKey] == 'none',
-    );
-    // The page rebuilds a frame after the file is read back.
-    await tester.pump();
-    expect(tester.widget<SettingsDropdown>(dropdown).current, 'None');
-    expect(
-      File(files.settings.path).readAsStringSync(),
-      contains('"chat.commitAttribution": "none"'),
-    );
-
-    await choose('BaoCode');
-    await settle(
-      tester,
-      () => !files.settings.values.containsKey(CommitAttribution.settingKey),
-    );
-    await tester.pump();
-    expect(tester.widget<SettingsDropdown>(dropdown).current, 'BaoCode');
+    expect(find.text('Commit Attribution'), findsNothing);
+    expect(find.text('Messages Sent While Working'), findsNothing);
+    expect(find.text('Suggest Next Prompt'), findsNothing);
+    expect(find.textContaining('Claude Code only'), findsNothing);
+    expect(find.textContaining('Claude Code CLI'), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('the main window is kept in settings.json, the default '

@@ -154,6 +154,67 @@ void main() {
     expect(after.single.title, 'Elsewhere');
   });
 
+  test('Image and Untitled titles yield to the first prompt', () async {
+    final root = Directory.systemTemp.createTempSync('cursor-cli-titles');
+    addTearDown(() => root.deleteSync(recursive: true));
+    const cwd = '/work/titles';
+    final hash = cursorWorkspaceKey(cwd);
+    final image = Directory(
+      '${root.path}/chats/$hash/66666666-6666-4666-8666-666666666666',
+    )..createSync(recursive: true);
+    File('${image.path}/meta.json').writeAsStringSync(
+      jsonEncode({
+        'cwd': cwd,
+        'title': 'Image',
+        'updatedAtMs': 1_700_000_010_000,
+        'hasConversation': true,
+      }),
+    );
+    File('${image.path}/prompt_history.json').writeAsStringSync(
+      jsonEncode(['<user_query>rename the sidebar chip</user_query>']),
+    );
+    final untitled = Directory(
+      '${root.path}/acp-sessions/77777777-7777-4777-8777-777777777777',
+    )..createSync(recursive: true);
+    File('${untitled.path}/meta.json').writeAsStringSync(
+      jsonEncode({
+        'cwd': cwd,
+        'title': 'Untitled',
+        'updatedAtMs': 1_700_000_011_000,
+      }),
+    );
+    File('${untitled.path}/store.db').writeAsStringSync(
+      '{"text":"<user_query>wire the sign-in button</user_query>"}',
+    );
+    final onlyImage = Directory(
+      '${root.path}/chats/$hash/88888888-8888-4888-8888-888888888888',
+    )..createSync(recursive: true);
+    File('${onlyImage.path}/meta.json').writeAsStringSync(
+      jsonEncode({
+        'cwd': cwd,
+        'title': '[Image 1]',
+        'updatedAtMs': 1_700_000_012_000,
+        'hasConversation': true,
+      }),
+    );
+
+    final sessions = await cursorCliSessionsIn(cwd, roots: [root.path]);
+    expect(
+      sessions.map((session) => session.title),
+      containsAll(['rename the sidebar chip', 'wire the sign-in button']),
+    );
+    expect(
+      sessions.map((session) => session.title),
+      isNot(containsAll(['Image', 'Untitled', '[Image 1]'])),
+    );
+    expect(
+      sessions
+          .singleWhere((session) => session.id.startsWith('88888888'))
+          .title,
+      startsWith('CLI '),
+    );
+  });
+
   test('config roots prefer CURSOR_CONFIG_DIR, then XDG, then ~/.cursor', () {
     expect(
       cursorCliStoreRoots(

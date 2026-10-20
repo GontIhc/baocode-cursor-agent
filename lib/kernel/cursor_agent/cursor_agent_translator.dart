@@ -36,6 +36,10 @@ class CursorAgentTranslator {
   /// showed the user message, so user chunks are kept only here.
   bool replaying = false;
 
+  /// Whether this replay emitted any conversation (text, thought, user
+  /// message, or tool). A load that returns no transcript leaves it false.
+  bool replayedTranscript = false;
+
   String? _messageKey;
   String _message = '';
   String? _thoughtKey;
@@ -178,6 +182,7 @@ class CursorAgentTranslator {
     final content = cursorJsonMap(update['content']);
     final text = content?['text'];
     if (content?['type'] != 'text' || text is! String || text.isEmpty) return;
+    if (replaying) replayedTranscript = true;
     final messageId = update['messageId'];
     final key = messageId is String && messageId.isNotEmpty
         ? messageId
@@ -271,6 +276,7 @@ class CursorAgentTranslator {
     final content = cursorJsonMap(update['content']);
     final text = content?['text'];
     if (content?['type'] != 'text' || text is! String || text.isEmpty) return;
+    if (replaying) replayedTranscript = true;
     final messageId = update['messageId'];
     final key = messageId is String && messageId.isNotEmpty
         ? messageId
@@ -284,6 +290,7 @@ class CursorAgentTranslator {
   void _tool(Map<String, Object?> update) {
     final id = update['toolCallId'];
     if (id is! String || id.isEmpty) return;
+    if (replaying) replayedTranscript = true;
     final tool = _tools.putIfAbsent(id, _Tool.new);
     final title = update['title'];
     final name = update['name'];

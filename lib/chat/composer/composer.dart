@@ -295,9 +295,13 @@ class ChatComposerState extends State<ChatComposer>
         return true;
       }
     }
-    if (widget.session.acceptsImages) {
-      final images = await WindowControls.readPasteboardImages();
-      if (images.isNotEmpty) {
+    final images = await WindowControls.readPasteboardImages();
+    if (!mounted) return false;
+    if (images.isNotEmpty) {
+      if (!widget.session.acceptsImages) {
+        _warnImagesNotSent();
+        if (text == null || text.trim().isEmpty) return true;
+      } else {
         await _addImages(images);
         return true;
       }
@@ -469,6 +473,19 @@ class ChatComposerState extends State<ChatComposer>
     return numbered;
   }
 
+  /// ACP does not carry image bytes. Say so instead of attaching nothing.
+  void _warnImagesNotSent() {
+    final message = context.l10n.composerImagesNotSent;
+    final notifications = IdeNotificationsScope.maybeOf(context);
+    if (notifications != null) {
+      notifications.notify(IdeSeverity.warning, message);
+      return;
+    }
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   /// Puts [files] in at [at] (in place of the selection when null), in
   /// their order: each a tag of its path, from the project's root when it
   /// is in it, or, for an image the conversation takes, the image. [here],
@@ -481,6 +498,11 @@ class ChatComposerState extends State<ChatComposer>
     bool here = false,
   }) async {
     if (files.isEmpty) return;
+    if (!widget.session.acceptsImages && files.any((file) => file.maybeImage)) {
+      _warnImagesNotSent();
+      files = [for (final file in files) if (!file.maybeImage) file];
+      if (files.isEmpty) return;
+    }
     var images = <ImageAttachment?>[for (final _ in files) null];
     if (widget.session.acceptsImages) {
       images = await _numbered(

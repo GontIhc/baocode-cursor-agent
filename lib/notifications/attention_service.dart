@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../branding/product_branding.dart';
 import '../chat/chat_models.dart';
 import '../kernel/kernel_types.dart';
 import '../l10n/l10n.dart';
@@ -171,8 +172,8 @@ class AttentionService {
           (id: _id(thread), title: thread.localizedTitle(l10n)),
       ],
       tooltip: waiting.isEmpty
-          ? 'BaoCode'
-          : 'BaoCode · ${l10n.trayWaitingCount(waiting.length)}',
+          ? productDisplayName
+          : '$productDisplayName · ${l10n.trayWaitingCount(waiting.length)}',
       labels: {
         'show': l10n.trayShow,
         'waiting': l10n.trayWaiting,

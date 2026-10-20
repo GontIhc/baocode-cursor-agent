@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../branding/product_branding.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../icons/brand_logos.dart' show BaoCodeLogo;
 import '../ide/ide_button.dart';
@@ -173,7 +174,9 @@ class _ChannelSetupWelcomeState extends State<ChannelSetupWelcome>
     if (account.signedIn) {
       unawaited(account.settle());
     } else {
-      unawaited(account.signIn(title: _gate.channel?.info.name ?? 'BaoCode'));
+      unawaited(
+        account.signIn(title: _gate.channel?.info.name ?? productDisplayName),
+      );
     }
   }
 

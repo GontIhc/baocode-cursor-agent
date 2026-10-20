@@ -402,7 +402,7 @@ void main() {
     kernel.dispose();
   });
 
-  test('without session/load the CLI chat still opens with a notice', () async {
+  test('without session/load the CLI chat opens and history is unavailable', () async {
     final transport = ScriptedCursorTransport(onPrompt: (_, _) {});
     final kernel = CursorAgentKernel(
       _descriptor,
@@ -423,17 +423,51 @@ void main() {
     await pumpEventQueue();
 
     expect(kernel.sessionId, 'sess_1');
+    expect(kernel.historyUnavailable, isTrue);
     expect(transport.methods, isNot(contains(CursorAcp.sessionLoad)));
     expect(
       events.whereType<ItemUpserted>().map((event) => event.item),
-      contains(
-        isA<NoticeItem>().having(
-          (item) => item.text,
-          'text',
-          contains('session/load'),
+      isNot(contains(isA<NoticeItem>())),
+    );
+    kernel.dispose();
+  });
+
+  test('session/load with no transcript marks history unavailable', () async {
+    final transport = ScriptedCursorTransport(
+      onPrompt: (_, _) {},
+      loadSession: true,
+    );
+    final kernel = CursorAgentKernel(
+      _descriptor,
+      KernelContext(
+        cwd: '/work',
+        resume: SessionRecord(
+          id: 'cli-session',
+          title: 'Old',
+          updatedAt: DateTime.utc(2026, 1, 1),
+          cwd: '/work',
         ),
       ),
+      start: (_) async => transport,
     );
+    kernel.prepare();
+    await pumpEventQueue();
+    expect(transport.methods, contains(CursorAcp.sessionLoad));
+    expect(kernel.historyUnavailable, isTrue);
+    expect(kernel.sessionId, 'cli-session');
+    kernel.dispose();
+  });
+
+  test('authenticate failure asks for agent login', () async {
+    final transport = ScriptedCursorTransport(
+      onPrompt: (_, _) {},
+      authError: 'not logged in',
+    );
+    final kernel = _kernel(transport);
+    kernel.prepare();
+    await pumpEventQueue();
+    expect(kernel.health.needsSignIn, isTrue);
+    expect(kernel.health.status, KernelHealthStatus.failed);
     kernel.dispose();
   });
 }
@@ -458,6 +492,7 @@ class ScriptedCursorTransport implements CursorAgentTransport {
     required this.onPrompt,
     this.loadSession = false,
     this.configOptions,
+    this.authError,
   });
 
   final void Function(
@@ -468,6 +503,7 @@ class ScriptedCursorTransport implements CursorAgentTransport {
 
   final bool loadSession;
   final Object? configOptions;
+  final String? authError;
 
   final StreamController<Map<String, Object?>> _out =
       StreamController.broadcast(sync: true);
@@ -514,7 +550,11 @@ class ScriptedCursorTransport implements CursorAgentTransport {
           'agentCapabilities': {'loadSession': loadSession},
         });
       case CursorAcp.authenticate:
-        reply(id, const {});
+        if (authError != null) {
+          replyError(id, authError!);
+        } else {
+          reply(id, const {});
+        }
       case CursorAcp.sessionNew:
         reply(id, {
           'sessionId': 'sess_1',
@@ -572,6 +612,15 @@ class ScriptedCursorTransport implements CursorAgentTransport {
 
   void reply(Object? id, Map<String, Object?> result) {
     if (!_out.isClosed) _out.add({'id': id, 'result': result});
+  }
+
+  void replyError(Object? id, String message) {
+    if (!_out.isClosed) {
+      _out.add({
+        'id': id,
+        'error': {'code': -32000, 'message': message},
+      });
+    }
   }
 
   void notify(String method, Map<String, Object?> params) {

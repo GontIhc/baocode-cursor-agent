@@ -2734,6 +2734,36 @@ class _MoreRow extends StatelessWidget {
   );
 }
 
+/// Small mark on a session that was listed from the Cursor CLI store.
+class _CliBadge extends StatelessWidget {
+  const _CliBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.hover,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: AppColors.textFaint,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            height: 1.1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ThreadRow extends StatelessWidget {
   const _ThreadRow({
     required this.thread,
@@ -2957,6 +2987,13 @@ class _ThreadRow extends StatelessWidget {
                               ),
                             ),
                     ),
+                    if (!renaming && _fromCli)
+                      GiveWay(
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: _CliBadge(label: context.l10n.sidebarCliBadge),
+                        ),
+                      ),
                     if (!renaming)
                       ..._buildTrailing(active, context.l10n, foreground),
                   ],
@@ -3025,6 +3062,11 @@ class _ThreadRow extends StatelessWidget {
       ),
     );
   }
+
+  /// Listed from the Cursor CLI store (`chats/` or `acp-sessions/`).
+  bool get _fromCli =>
+      thread.record != null &&
+      thread.kernel.id == KernelRegistry.cursorAgent.id;
 
   Widget _buildTitle(AppLocalizations l10n, Color foreground) {
     final status = thread.status;

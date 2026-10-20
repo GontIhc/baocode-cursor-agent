@@ -68,8 +68,7 @@ void main() {
     expect(find.text('Production'), findsOneWidget);
     expect(
       find.text(
-        'Not connected · deploy@10.0.0.5 · Password · through bastion · '
-        'Core: Built-in',
+        'Not connected · deploy@10.0.0.5 · Password · through bastion',
       ),
       findsOneWidget,
     );
@@ -86,12 +85,19 @@ void main() {
     await tester.tap(find.text('Edit…').first);
     await tester.pumpAndSettle();
     expect(find.text('Edit Production'), findsOneWidget);
-    await tester.tap(find.text('Automatic').last);
-    await tester.pump();
+    expect(find.text('Core'), findsNothing);
+    expect(find.text('Built-in'), findsNothing);
+    await tester.enterText(
+      find.byWidgetPredicate(
+        (widget) => widget is IdeInputBox && widget.semanticsLabel == 'User',
+      ),
+      'ops',
+    );
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
-    expect(workspace.sshServers['prod']!.core, SshCore.auto);
-    expect(find.textContaining('Core: Automatic'), findsOneWidget);
+    expect(workspace.sshServers['prod']!.user, 'ops');
+    expect(workspace.sshServers['prod']!.core, SshCore.builtin);
+    expect(find.textContaining('Core:'), findsNothing);
   });
 
   testWidgets('added from the page', (tester) async {
