@@ -340,10 +340,10 @@ jobs:
       - name: Package the .deb and the tarball
         run: |
           sh tool/package_linux_deb.sh ${{ matrix.edition == 'channel' && '--channel' || '' }}
-          dpkg-deb --info build/installers/BaoCode-*.deb
+          dpkg-deb --info build/installers/BaoCursor-*.deb
       - name: Install the package and launch it
         run: |
-          sudo apt-get install -y ./build/installers/BaoCode-*.deb
+          sudo apt-get install -y ./build/installers/BaoCursor-*.deb
           log="$RUNNER_TEMP/launch.log"
           # A browser's folder, for the host's manifest to be written in; the
           # socket in a runtime folder of the user's alone, as on a desktop.
@@ -357,12 +357,12 @@ jobs:
           sleep 15
           if ! pgrep -x baocode > /dev/null; then
             cat "$log"
-            echo "::error::BaoCode exited within 15 seconds of launch"
+            echo "::error::BaoCursor exited within 15 seconds of launch"
             exit 1
           fi
-          echo "BaoCode is running after 15 seconds"
+          echo "BaoCursor is running after 15 seconds"
           # The browser extension's host: where the manifest says, and
-          # reaching the BaoCode running.
+          # reaching the running BaoCursor.
           manifest="$HOME/.config/google-chrome/NativeMessagingHosts/dev.baocode.browser.json"
           cat "$manifest"
           grep -q '"path": "/opt/baocode/baocode-browser-host"' "$manifest"
@@ -388,8 +388,8 @@ jobs:
           name: linux-${{ matrix.arch }}${{ env.SUFFIX }}
           if-no-files-found: error
           path: |
-            build/installers/BaoCode-*.deb
-            build/installers/BaoCode-*.tar.gz
+            build/installers/BaoCursor-*.deb
+            build/installers/BaoCursor-*.tar.gz
 
   share:
     name: Put it at dl.baocode.dev/test/ for testers
@@ -444,7 +444,7 @@ jobs:
             echo "## For testers: $MARKETING, \`$GITHUB_REF_NAME\` (${GITHUB_SHA::7})"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
-          for file in dist/macos/BaoCode-*.dmg dist/windows/BaoCode-*-setup*.exe dist/linux/BaoCode-*.deb; do
+          for file in dist/macos/BaoCode-*.dmg dist/windows/BaoCode-*-setup*.exe dist/linux/BaoCursor-*.deb; do
             name=$(basename "$file")
             aws s3 cp "$file" "s3://$R2_BUCKET/$dir/$name" --cache-control 'public, max-age=86400'
             url="https://dl.baocode.dev/$dir/$name"
@@ -501,8 +501,8 @@ jobs:
             done
             cp dist/windows$edition/BaoCode-$MARKETING-setup$edition.exe out/
             for arch in x64 arm64; do
-              cp dist/linux-$arch$edition/BaoCode-$MARKETING-linux-*.deb \
-                dist/linux-$arch$edition/BaoCode-$MARKETING-linux-*.tar.gz out/
+              cp dist/linux-$arch$edition/BaoCursor-$MARKETING-linux-*.deb \
+                dist/linux-$arch$edition/BaoCursor-$MARKETING-linux-*.tar.gz out/
             done
           done
           # The remote server, under the name both apps' servers.json give it;
@@ -545,8 +545,8 @@ jobs:
               --macos-x64$edition out/BaoCode-$MARKETING-mac-x64$edition.zip
               --dmg-arm64$edition out/BaoCode-$MARKETING-arm64$edition.dmg
               --dmg-x64$edition out/BaoCode-$MARKETING-x64$edition.dmg
-              --linux-x64$edition out/BaoCode-$MARKETING-linux-amd64$edition.deb
-              --linux-arm64$edition out/BaoCode-$MARKETING-linux-arm64$edition.deb
+              --linux-x64$edition out/BaoCursor-$MARKETING-linux-amd64$edition.deb
+              --linux-arm64$edition out/BaoCursor-$MARKETING-linux-arm64$edition.deb
             )
           done
           BAOCODE_UPDATE_SIGNING_KEY="$key" dart run tool/release_manifest.dart \
@@ -568,8 +568,9 @@ jobs:
             aws s3 cp remote-latest.json "s3://$R2_BUCKET/releases/remote/latest.json" \
               --cache-control 'public, max-age=60' --content-type application/json
           fi
-          for file in $(cd out && ls BaoCode-*); do
-            aws s3 cp "out/$file" "s3://$R2_BUCKET/releases/$MARKETING/$file" \
+          for file in out/BaoCode-* out/BaoCursor-*; do
+            [ -f "$file" ] || continue
+            aws s3 cp "$file" "s3://$R2_BUCKET/releases/$MARKETING/$(basename "$file")" \
               --cache-control "$immutable"
           done
       - name: Check the downloads are served
@@ -602,5 +603,5 @@ jobs:
           gh release delete "v$MARKETING" --yes 2>/dev/null || true
           gh release create "v$MARKETING" --title "BaoCode $MARKETING" "${notes[@]}" \
             out/BaoCode-$MARKETING-arm64.dmg out/BaoCode-$MARKETING-x64.dmg out/BaoCode-$MARKETING-setup.exe \
-            out/BaoCode-$MARKETING-linux-amd64.deb out/BaoCode-$MARKETING-linux-arm64.deb \
-            out/BaoCode-$MARKETING-linux-amd64.tar.gz out/BaoCode-$MARKETING-linux-arm64.tar.gz
+            out/BaoCursor-$MARKETING-linux-amd64.deb out/BaoCursor-$MARKETING-linux-arm64.deb \
+            out/BaoCursor-$MARKETING-linux-amd64.tar.gz out/BaoCursor-$MARKETING-linux-arm64.tar.gz

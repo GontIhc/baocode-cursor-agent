@@ -4,8 +4,11 @@
 cmake_minimum_required(VERSION 3.13)
 project(runner LANGUAGES CXX)
 
-# The name of the executable created for the application. Change this to change
-# the on-disk name of your application.
+# The on-disk executable. Installer filenames and the desktop Name are
+# BaoCursor (tool/package_linux_deb.sh). This stays `baocode`: Flutter reads
+# the Linux target name from here (linux/runner/CMakeLists.txt) and does not
+# require this spelling, but the dpkg package `baocode` and /opt/baocode are
+# what lib/update/installer_io.dart checks before applying an update.
 set(BINARY_NAME "baocode")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
