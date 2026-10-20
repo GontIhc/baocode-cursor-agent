@@ -1,3 +1,4 @@
+import 'package:baocode/chat/panels/cli_history_empty.dart';
 import 'package:baocode/chat/panels/health_banner.dart';
 import 'package:baocode/kernel/kernel_types.dart';
 import 'package:baocode/l10n/app_localizations.dart';
@@ -77,5 +78,61 @@ void main() {
     await pump(tester, noModel);
     expect(find.text('No model to run on'), findsOneWidget);
     expect(find.text('重试'), findsOneWidget);
+  });
+
+  testWidgets('authenticate failure offers Sign in, and still retries', (
+    tester,
+  ) async {
+    var retried = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: HealthBanner(
+            health: const KernelHealth(
+              KernelHealthStatus.failed,
+              message: 'not logged in',
+              needsSignIn: true,
+            ),
+            kernelName: 'Cursor Agent',
+            onRetry: () => retried++,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Sign in to use Cursor Agent.'), findsOneWidget);
+    expect(find.textContaining('API key alone'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    await tester.tap(find.text('Sign in'));
+    await tester.pump();
+    expect(find.text('Copied `agent login`'), findsOneWidget);
+    await tester.tap(find.text('Retry'));
+    expect(retried, 1);
+  });
+
+  testWidgets('CLI history that cannot be restored says so', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: const Scaffold(body: CliHistoryEmpty()),
+      ),
+    );
+    expect(find.text('History stays in the CLI'), findsOneWidget);
+    expect(find.textContaining('Cursor CLI store'), findsOneWidget);
   });
 }

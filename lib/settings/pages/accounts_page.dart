@@ -166,12 +166,12 @@ Uri forgeRevokePage(ForgeAccount account) =>
 Uri forgeNewTokenPage(ForgeKind kind, String host) => switch (kind) {
   ForgeKind.github => Uri.https(host, '/settings/tokens/new', {
     'scopes': 'repo,read:user',
-    'description': 'BaoCode',
+    'description': 'BaoCursor',
   }),
   ForgeKind.gitlab => Uri.https(
     host,
     '/-/user_settings/personal_access_tokens',
-    {'name': 'BaoCode', 'scopes': 'api'},
+    {'name': 'BaoCursor', 'scopes': 'api'},
   ),
 };
 

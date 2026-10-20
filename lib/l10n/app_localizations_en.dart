@@ -1453,7 +1453,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'No tab is shared yet. Ask an agent to open a page, or click BaoCursor in the browser toolbar to share the tab in front.';
 
   @override
-  String get browserOtherApp => 'Another BaoCursor is connected to the browser.';
+  String get browserOtherApp =>
+      'Another BaoCursor is connected to the browser.';
 
   @override
   String get browserSharedTabs => 'Shared Tabs';
@@ -2963,6 +2964,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get healthRetry => 'Retry';
+
+  @override
+  String get healthNeedsSignIn => 'Sign in to use Cursor Agent.';
+
+  @override
+  String get healthSignIn => 'Sign in';
+
+  @override
+  String get healthSignInCopied => 'Copied `agent login`';
+
+  @override
+  String get healthSignInHint =>
+      'Copies `agent login` and opens Terminal. An API key alone is not enough for ACP authenticate.';
+
+  @override
+  String get cliHistoryEmptyTitle => 'History stays in the CLI';
+
+  @override
+  String get cliHistoryEmptyBody =>
+      'This shell could not restore the transcript. The conversation still lives in the Cursor CLI store, so the chat looks empty here. You can keep going; new messages start in this session.';
+
+  @override
+  String get composerImagesNotSent => 'Images are not sent over ACP yet.';
+
+  @override
+  String get sidebarCliBadge => 'CLI';
 
   @override
   String get interactionOther => 'Other';

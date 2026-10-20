@@ -272,6 +272,7 @@ class KernelHealth {
     this.detail,
     this.missingFolder,
     this.noModel = false,
+    this.needsSignIn = false,
   });
 
   static const idle = KernelHealth(KernelHealthStatus.idle);
@@ -292,6 +293,10 @@ class KernelHealth {
   /// Whether what it lacks is a model to run on (BaoCode's own core with
   /// no upstream turned on): offered setting one up rather than a retry.
   final bool noModel;
+
+  /// Whether ACP `authenticate` failed and the user needs `agent login`.
+  /// An API key alone does not satisfy that call.
+  final bool needsSignIn;
 }
 
 /// A task the kernel runs beside the conversation: a background command, a

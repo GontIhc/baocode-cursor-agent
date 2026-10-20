@@ -203,11 +203,6 @@ class _SshSettingsPageState extends State<SshSettingsPage> {
       },
       if (server.jump case final jump?)
         l10n.sshSettingsVia(workspace.hostLabel(jump)),
-      l10n.sshSettingsCore(switch (server.core) {
-        SshCore.auto => l10n.sshServerCoreAuto,
-        SshCore.builtin => l10n.generalSettingsClaudeCoreBuiltin,
-        SshCore.cli => l10n.generalSettingsClaudeCoreCli,
-      }),
     ];
   }
 }

@@ -150,7 +150,7 @@ class _SshServerFormState extends State<SshServerForm> {
   late final _key = TextEditingController();
   late SshAuth _auth;
   String? _jump;
-  late SshCore _core = widget.server?.core ?? SshCore.auto;
+  late final SshCore _core = widget.server?.core ?? SshCore.auto;
 
   /// The messages of the fields, once saving was tried.
   final Map<String, String> _errors = {};
@@ -485,30 +485,9 @@ class _SshServerFormState extends State<SshServerForm> {
                               onOpen: _pickJump,
                             ),
                           ),
-                          const SizedBox(height: 18),
-                          _Field(
-                            label: l10n.sshServerCore,
-                            trailing: _Segments<SshCore>(
-                              value: _core,
-                              options: [
-                                (SshCore.auto, l10n.sshServerCoreAuto),
-                                (
-                                  SshCore.builtin,
-                                  l10n.generalSettingsClaudeCoreBuiltin,
-                                ),
-                                (
-                                  SshCore.cli,
-                                  l10n.generalSettingsClaudeCoreCli,
-                                ),
-                              ],
-                              onChanged: (core) => setState(() => _core = core),
-                            ),
-                            child: _Hint(switch (_core) {
-                              SshCore.auto => l10n.sshServerCoreAutoHint,
-                              SshCore.builtin => l10n.sshServerCoreBuiltinHint,
-                              SshCore.cli => l10n.sshServerCoreCliHint,
-                            }, top: 0),
-                          ),
+                          // Claude kernel (built-in core vs Claude Code CLI) is not
+                          // offered. This shell only runs Cursor Agent. A
+                          // server's stored core is left as it was.
                         ],
                       ),
                     ),

@@ -260,6 +260,13 @@ abstract interface class RenamesSession {
 /// Takes pictures with a message ([KernelTurn.images]).
 abstract interface class AcceptsImages {}
 
+/// A kept CLI session was opened, and its transcript could not be restored
+/// (`session/load` missing, failed, or empty). The body still lives in the
+/// CLI store.
+abstract interface class ReportsUnloadedHistory {
+  bool get historyUnavailable;
+}
+
 /// Reads the conversation it continues ([KernelContext.resume]) before
 /// showing it.
 abstract interface class LoadsHistory {

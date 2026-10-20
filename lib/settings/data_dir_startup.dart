@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../branding/product_branding.dart';
 import '../ide/ide_button.dart';
 import '../ide/ide_dialog.dart';
 import '../l10n/l10n.dart';
@@ -55,7 +56,7 @@ class DataDirectoryRecoveryApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'BaoCode',
+    title: productDisplayName,
     debugShowCheckedModeBanner: false,
     theme: buildAppTheme(),
     // The display language setting is in the folder that is not there:

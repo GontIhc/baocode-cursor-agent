@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// BaoCode's mark and name, side by side, drawn in pixels on one grid: every
-/// stroke, the mark's and the letters', is one [cell] wide. Drawn rather than
-/// set in a font, so nothing is bundled for seven letters.
+/// BaoCursor's mark and name, side by side, drawn in pixels on one grid:
+/// every stroke, the mark's and the letters', is one [cell] wide. Drawn
+/// rather than set in a font, so nothing is bundled for the letters.
 class BaoWordmark extends StatelessWidget {
   const BaoWordmark({super.key, required this.color, this.cell = 2});
 
@@ -14,7 +14,7 @@ class BaoWordmark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'BaoCode',
+      label: 'BaoCursor',
       child: CustomPaint(
         size: _WordmarkPainter.sizeFor(cell),
         painter: _WordmarkPainter(color: color, cell: cell),
@@ -48,8 +48,11 @@ class _WordmarkPainter extends CustomPainter {
     'C': ['.####', '#....', '#....', '#....', '.####'],
     'D': ['####.', '#...#', '#...#', '#...#', '####.'],
     'E': ['#####', '#....', '####.', '#....', '#####'],
+    'R': ['####.', '#...#', '####.', '#.#..', '#..##'],
+    'S': ['.####', '#....', '.###.', '....#', '####.'],
+    'U': ['#...#', '#...#', '#...#', '#...#', '.###.'],
   };
-  static const _word = 'BAOCODE';
+  static const _word = 'BAOCURSOR';
   static const _glyphW = 5, _glyphH = 5, _tracking = 2;
 
   /// Between the mark and the name.

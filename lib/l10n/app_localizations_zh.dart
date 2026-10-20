@@ -2864,6 +2864,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String get healthRetry => '重试';
 
   @override
+  String get healthNeedsSignIn => '请先登录才能使用 Cursor Agent。';
+
+  @override
+  String get healthSignIn => '登录';
+
+  @override
+  String get healthSignInCopied => '已复制 `agent login`';
+
+  @override
+  String get healthSignInHint =>
+      '会复制 `agent login` 并打开终端。只配置 API key 不够完成 ACP 的 authenticate。';
+
+  @override
+  String get cliHistoryEmptyTitle => '历史记录留在 CLI 里';
+
+  @override
+  String get cliHistoryEmptyBody =>
+      '这个外壳没法恢复对话正文。记录仍在 Cursor CLI 里，所以这里看起来是空的。可以继续聊；新消息会从这次会话开始。';
+
+  @override
+  String get composerImagesNotSent => '图片暂时还不会通过 ACP 发送。';
+
+  @override
+  String get sidebarCliBadge => 'CLI';
+
+  @override
   String get interactionOther => '其他';
 
   @override
@@ -5579,8 +5605,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '未设置命名工作区时，作为重复的 `--add-dir` 传递。（cursorAgent.extraDirectories）';
 
   @override
-  String get cursorAgentWorkspaceExtraDirsEmpty =>
-      '无额外根目录。始终包含主项目文件夹。';
+  String get cursorAgentWorkspaceExtraDirsEmpty => '无额外根目录。始终包含主项目文件夹。';
 
   @override
   String get cursorAgentWorkspaceAddRoot => '添加文件夹';
@@ -7585,7 +7610,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkSettingsTitle => '网络';
 
   @override
-  String get networkSettingsDescription => 'BaoCursor 及其启动的 Claude Code 如何访问网络。';
+  String get networkSettingsDescription =>
+      'BaoCursor 及其启动的 Claude Code 如何访问网络。';
 
   @override
   String get networkProxy => '代理';
@@ -8111,7 +8137,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mobileRelay => '中转';
 
   @override
-  String get mobileRelayDescription => '当这台电脑的地址都无法直连时，经由 BaoCursor 中转服务连接。即将推出。';
+  String get mobileRelayDescription =>
+      '当这台电脑的地址都无法直连时，经由 BaoCursor 中转服务连接。即将推出。';
 
   @override
   String get mobileRelayUnavailable => '暂不可用';
@@ -9622,7 +9649,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get channelSetupLinkInvalid => '这不是网页上的链接，请复制网页上显示的完整链接。';
 
   @override
-  String get channelSetupLinkOther => '这个链接属于另一个 BaoCursor（别的电脑或重装前的），请用这里打开的网页。';
+  String get channelSetupLinkOther =>
+      '这个链接属于另一个 BaoCursor（别的电脑或重装前的），请用这里打开的网页。';
 
   @override
   String get channelSetupTrouble => '遇到问题？';

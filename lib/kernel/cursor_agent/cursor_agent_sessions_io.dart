@@ -332,9 +332,28 @@ String _loose(List<int> bytes) => latin1.decode(bytes, allowInvalid: true);
 String? _usableTitle(String? raw) {
   final text = raw?.trim();
   if (text == null || text.isEmpty) return null;
-  const generic = {'new agent', 'new chat', 'untitled', 'untitled chat'};
-  if (generic.contains(text.toLowerCase())) return null;
-  return _clip(text.replaceAll(RegExp(r'\s+'), ' '));
+  final collapsed = text.replaceAll(RegExp(r'\s+'), ' ');
+  // `[Image 1]` / `Image #1` with no words is not a title.
+  final withoutChips = collapsed
+      .replaceAll(
+        RegExp(r'\[?\s*image\s*#?\s*\d+\s*\]?', caseSensitive: false),
+        ' ',
+      )
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (withoutChips.isEmpty) return null;
+  const generic = {
+    'new agent',
+    'new chat',
+    'new session',
+    'untitled',
+    'untitled chat',
+    'untitled conversation',
+    'image',
+    'img',
+  };
+  if (generic.contains(withoutChips.toLowerCase())) return null;
+  return _clip(withoutChips);
 }
 
 String? _usablePrompt(String? raw) {

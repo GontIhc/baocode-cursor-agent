@@ -247,6 +247,20 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
 
   KernelHealth get health => _kernel.health;
 
+  /// A kept CLI session was opened and its transcript was not restored.
+  bool get historyUnavailable => switch (_kernel) {
+    ReportsUnloadedHistory(:final historyUnavailable) => historyUnavailable,
+    _ => false,
+  };
+
+  /// Whether the transcript has a message, not only a runtime notice.
+  bool get hasConversation {
+    for (var i = 0; i < _transcript.length; i++) {
+      if (_transcript.itemAt(i) is! NoticeItem) return true;
+    }
+    return false;
+  }
+
   /// Whether the conversation it continues is still being read.
   bool get loadingHistory => switch (_kernel) {
     LoadsHistory(:final loadingHistory) => loadingHistory,

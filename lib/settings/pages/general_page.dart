@@ -12,11 +12,9 @@ import '../../kernel/cursor_agent/cursor_agent_model_setting.dart';
 import '../../kernel/cursor_agent/cursor_agent_path_setting.dart';
 import '../../kernel/cursor_agent/cursor_cli_workspaces_io.dart';
 import '../../workspace/workspace.dart';
-import '../../kernel/commit_attribution.dart';
-import '../../kernel/prompt_suggestions.dart';
+import '../../branding/product_branding.dart';
 import '../../chat/composer/composer_polish.dart' show ComposerPolishSetting;
 import '../../chat/widgets/turn_footer.dart' show LiveTurnStatsSetting;
-import '../../kernel/queued_messages.dart';
 import '../../l10n/l10n.dart';
 import '../../platform/app_platform.dart';
 import '../../platform/context_menu.dart';
@@ -34,17 +32,14 @@ import 'settings_widgets.dart';
 
 /// Settings → General: what the app shows at launch
 /// (`workbench.mainWindow`), where the IDE opens and how its windows open,
-/// come back and close (`window.*`), who the commits and pull requests
-/// agents write credit (`chat.commitAttribution` in settings.json), when a
-/// message sent while the agent works is taken up (`chat.queuedMessages`),
-/// whether the next prompt is suggested after each turn
-/// (`chat.promptSuggestions`), whether the composer has its Polish button
-/// (`chat.composer.polish`), whether the turn under way shows its time,
-/// speed and tokens (`chat.liveTurnStats`), the Cursor Agent CLI to run
-/// (`cursorAgent.path`),
-/// the `code` shell command, and Open with BaoCode in Finder's or
-/// Explorer's context menu. A choice is written at once; the default is not
-/// written.
+/// come back and close (`window.*`), whether the composer has its Polish
+/// button (`chat.composer.polish`), whether the turn under way shows its
+/// time, speed and tokens (`chat.liveTurnStats`), the Cursor Agent CLI to
+/// run (`cursorAgent.path`), the `code` shell command, and Open with
+/// BaoCursor in Finder's or Explorer's context menu. Claude Code kernel
+/// rows (core, commit attribution, queued messages, prompt suggestions)
+/// are not shown: this shell only runs Cursor Agent. A choice is written
+/// at once; the default is not written.
 class GeneralSettingsPage extends StatelessWidget {
   const GeneralSettingsPage({
     super.key,
@@ -67,27 +62,6 @@ class GeneralSettingsPage extends StatelessWidget {
   /// The feature tips: those not on yet are listed first.
   final FeatureTipsController? tips;
 
-  static String attributionName(BuildContext context, CommitAttribution value) {
-    final l10n = context.l10n;
-    return switch (value) {
-      CommitAttribution.baocode => 'BaoCode',
-      CommitAttribution.agent => l10n.generalSettingsAttributionAgent,
-      CommitAttribution.none => l10n.generalSettingsAttributionNone,
-    };
-  }
-
-  static String _attributionDetail(
-    BuildContext context,
-    CommitAttribution value,
-  ) {
-    final l10n = context.l10n;
-    return switch (value) {
-      CommitAttribution.baocode => CommitAttribution.baoCodeCommit,
-      CommitAttribution.agent => l10n.generalSettingsAttributionAgentDetail,
-      CommitAttribution.none => l10n.generalSettingsAttributionNoneDetail,
-    };
-  }
-
   static String mainWindowName(BuildContext context, MainWindow value) {
     final l10n = context.l10n;
     return switch (value) {
@@ -96,11 +70,6 @@ class GeneralSettingsPage extends StatelessWidget {
       MainWindow.last => l10n.generalSettingsMainWindowLast,
     };
   }
-
-  void _select(CommitAttribution value) => _write(
-    CommitAttribution.settingKey,
-    value == CommitAttribution.fallback ? null : value.name,
-  );
 
   void _selectMainWindow(MainWindow value) => _write(
     MainWindow.settingKey,
@@ -278,11 +247,6 @@ class GeneralSettingsPage extends StatelessWidget {
     return ListenableBuilder(
       listenable: settings ?? Listenable.merge(const []),
       builder: (context, _) {
-        final current = CommitAttribution.parse(
-          settings?[CommitAttribution.settingKey],
-        );
-        final name = attributionName(context, current);
-        final detail = _attributionDetail(context, current);
         final mainWindow = MainWindow.parse(settings?[MainWindow.settingKey]);
         final mainWindowShown = mainWindowName(context, mainWindow);
         return SettingsPage(
@@ -320,55 +284,6 @@ class GeneralSettingsPage extends StatelessWidget {
                           onSelected: () => _selectMainWindow(value),
                         ),
                     ],
-                  ),
-                ),
-                SettingsRow(
-                  label: l10n.generalSettingsCommitAttribution,
-                  description: l10n.generalSettingsCommitAttributionDescription,
-                  below: [
-                    SelectableText(
-                      detail,
-                      style: current == CommitAttribution.baocode
-                          ? SettingsText.path
-                          : SettingsText.description,
-                    ),
-                  ],
-                  trailing: SettingsDropdown(
-                    current: name,
-                    semanticLabel: l10n.generalSettingsCommitAttributionLabel(
-                      name,
-                    ),
-                    entries: () => [
-                      for (final value in CommitAttribution.values)
-                        IdeMenuAction(
-                          attributionName(context, value),
-                          checked: value == current,
-                          onSelected: () => _select(value),
-                        ),
-                    ],
-                  ),
-                ),
-                _choiceRow(
-                  context,
-                  key: QueuedMessages.settingKey,
-                  label: l10n.generalSettingsQueuedMessages,
-                  description: l10n.generalSettingsQueuedMessagesDescription,
-                  values: {
-                    QueuedMessages.afterTurn.name:
-                        l10n.generalSettingsQueuedAfterTurn,
-                    QueuedMessages.duringTurn.name:
-                        l10n.generalSettingsQueuedDuringTurn,
-                  },
-                ),
-                SettingsSwitchRow(
-                  label: l10n.generalSettingsPromptSuggestions,
-                  description: l10n.generalSettingsPromptSuggestionsDescription,
-                  value: PromptSuggestions.enabled(
-                    settings?[PromptSuggestions.settingKey],
-                  ),
-                  onChanged: (on) => _write(
-                    PromptSuggestions.settingKey,
-                    on ? null : PromptSuggestions.off,
                   ),
                 ),
                 SettingsSwitchRow(
@@ -671,7 +586,7 @@ class _ContextMenuSettingState extends State<_ContextMenuSetting> {
                 ? () => unawaited(
                     _run(
                       () => ContextMenu.install((
-                        agent: l10n.contextMenuOpenWith('BaoCode'),
+                        agent: l10n.contextMenuOpenWith(productDisplayName),
                         ide: l10n.contextMenuOpenWith('Fast Ide'),
                       )),
                     ),

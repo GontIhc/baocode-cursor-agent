@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../../branding/product_branding.dart';
 import '../../ide/ide_button.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
@@ -12,7 +13,7 @@ import '../../workspace/editor_launcher.dart' show openExternal;
 import '../../workspace/window_header/about_dialog.dart' show aboutIconAsset;
 import 'settings_widgets.dart';
 
-/// Settings → About: what BaoCode is, which build this is, and where it
+/// Settings → About: what BaoCursor is, which build this is, and where it
 /// is made in the open: its repository (a star there helps others find
 /// it), its site, its changelog, and where to tell of a problem.
 class AboutSettingsPage extends StatelessWidget {
@@ -56,7 +57,7 @@ class AboutSettingsPage extends StatelessWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        'BaoCode',
+                        productDisplayName,
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 17,

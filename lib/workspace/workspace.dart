@@ -509,7 +509,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
         record: session,
         title:
             _names[id] ??
-            (session.title.isEmpty ? l10n().agentImageUntitled : session.title),
+            (session.title.isEmpty ? l10n().agentUntitled : session.title),
         updatedAt: session.updatedAt,
         pinned: _pinned.contains(id),
         archived: _archived.contains(id),

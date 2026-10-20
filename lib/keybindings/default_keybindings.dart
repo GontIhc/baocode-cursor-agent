@@ -162,7 +162,7 @@ final Map<String, CommandInfo> commandCatalog = {
     ),
     const CommandInfo(
       starOnGitHubCommandId,
-      'Star BaoCode on GitHub',
+      'Star BaoCursor on GitHub',
       category: 'Help',
     ),
     const CommandInfo(
