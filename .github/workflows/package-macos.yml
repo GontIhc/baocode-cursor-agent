@@ -7,6 +7,9 @@ name: Package macOS
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - ci/package-macos
 
 permissions:
   contents: read
@@ -65,17 +68,17 @@ jobs:
           for arch in arm64 x64; do
             dir="$RUNNER_TEMP/launch-$arch"
             mkdir "$dir"
-            ditto -x -k build/installers/BaoCode-*-mac-$arch.zip "$dir"
+            ditto -x -k build/installers/BaoCursor-*-mac-$arch.zip "$dir"
             BAOCODE_DATA_DIR="$dir-data" \
-              "$dir/BaoCode.app/Contents/MacOS/BaoCode" > "$dir.log" 2>&1 &
+              "$dir/BaoCursor.app/Contents/MacOS/BaoCursor" > "$dir.log" 2>&1 &
             pid=$!
             sleep 15
             if ! kill -0 $pid 2>/dev/null; then
               cat "$dir.log"
-              echo "::error::BaoCode ($arch) exited within 15 seconds of launch"
+              echo "::error::BaoCursor ($arch) exited within 15 seconds of launch"
               exit 1
             fi
-            echo "BaoCode ($arch) is running after 15 seconds"
+            echo "BaoCursor ($arch) is running after 15 seconds"
             kill $pid
           done
       - uses: actions/upload-artifact@v4
@@ -83,5 +86,5 @@ jobs:
           name: macos
           if-no-files-found: error
           path: |
-            build/installers/BaoCode-*.dmg
-            build/installers/BaoCode-*-mac-*.zip
+            build/installers/BaoCursor-*.dmg
+            build/installers/BaoCursor-*-mac-*.zip
