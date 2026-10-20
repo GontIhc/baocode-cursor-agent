@@ -41,6 +41,7 @@ import 'kernel/claude_code/claude_code_kernel.dart';
 import 'kernel/claude_code/claude_core_setting.dart';
 import 'kernel/claude_code/claude_onboarding.dart';
 import 'kernel/claude_code/claude_path_setting.dart';
+import 'kernel/cursor_agent/cursor_agent_path_setting.dart';
 import 'kernel/claude_code/process_transport.dart';
 import 'kernel/claude_code/turn_stats_stub.dart'
     if (dart.library.io) 'kernel/claude_code/turn_stats_io.dart'
@@ -185,6 +186,11 @@ Future<void> main(List<String> arguments) async {
     // agent starts.
     ClaudePathSetting.current = () =>
         ClaudePathSetting.parse(files.settings[ClaudePathSetting.settingKey]);
+    // Which `agent` binary Cursor Agent sessions spawn (`cursorAgent.path`).
+    // Empty: PATH, then ~/.local/bin/agent. Read as each session starts.
+    CursorAgentPathSetting.current = () => CursorAgentPathSetting.parse(
+      files.settings[CursorAgentPathSetting.settingKey],
+    );
     // Settings → General → Claude Code: the core sessions run on (BaoCode's
     // own, or the CLI), read as each agent starts. Unset, the CLI where it
     // is installed: looked for on the app's PATH, then the shell's.

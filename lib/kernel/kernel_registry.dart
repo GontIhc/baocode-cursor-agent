@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'agent_kernel.dart';
 import 'claude_code/claude_code_kernel.dart';
+import 'cursor_agent/cursor_agent_kernel.dart';
 import '../remote/remote_claude.dart';
 
 /// The kernels the user can pick from. Another kernel is an adapter and a
@@ -26,7 +27,17 @@ abstract final class KernelRegistry {
     catalog: const ClaudeCatalog(),
   );
 
-  static List<KernelDescriptor> _all = [claudeCode];
+  /// Cursor Agent CLI (`agent acp`) over stdio JSON-RPC. Claude Code stays
+  /// the default; this is a second choice.
+  static final KernelDescriptor cursorAgent = KernelDescriptor(
+    id: 'cursor-agent',
+    label: 'Cursor Agent',
+    icon: Icons.smart_toy_outlined,
+    description: 'Cursor’s coding agent, over ACP',
+    create: (context) => CursorAgentKernel(cursorAgent, context),
+  );
+
+  static List<KernelDescriptor> _all = [claudeCode, cursorAgent];
 
   static List<KernelDescriptor> get all => _all;
 
