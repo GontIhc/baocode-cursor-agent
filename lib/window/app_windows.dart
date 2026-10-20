@@ -14,6 +14,7 @@ import '../chat/composer/file_drop.dart';
 import '../ide/ide_dialog.dart';
 import '../ide/ide_quick_input.dart';
 import '../ide/ide_workspace.dart';
+import '../branding/product_branding.dart';
 import '../l10n/l10n.dart';
 import '../platform/local_paths.dart'
     if (dart.library.io) '../platform/local_paths_io.dart'
@@ -151,8 +152,9 @@ class AppWindow {
     (_, null) => l10n.windowWelcomeTitle,
   };
 
-  /// The title the system shows: `folder — BaoCode`.
-  String title(AppLocalizations l10n) => '${label(l10n)} — BaoCode';
+  /// The title the system shows: `folder — BaoCursor`.
+  String title(AppLocalizations l10n) =>
+      '${label(l10n)} — ${productWindowTitleSuffix}';
 
   /// The folder's name; a remote one's with its host, as VS Code shows
   /// one (`app [SSH: dev]`).
