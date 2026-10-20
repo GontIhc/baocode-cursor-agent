@@ -39,6 +39,8 @@ import '../workspace/workspace.dart';
 import '../workspace/workspace_dialog.dart';
 import 'sidebar_menu.dart';
 import 'sidebar_times.dart';
+import '../kernel/kernel_registry.dart';
+import '../workspace/cursor_agent_workspace_sidebar.dart';
 
 enum SidebarGrouping {
   project('Project', Icons.folder_outlined),
@@ -783,6 +785,12 @@ class _SidebarState extends State<Sidebar>
                 widget.onStash != null)
               const SizedBox(height: 4),
             _buildGroupingBar(),
+            if (_current case final thread?
+                when thread.kernel.id == KernelRegistry.cursorAgent.id)
+              CursorAgentWorkspaceSidebar(
+                workspace: _workspace,
+                thread: thread,
+              ),
             Expanded(child: _buildList()),
             _buildFooter(),
           ],

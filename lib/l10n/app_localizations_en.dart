@@ -5897,6 +5897,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'Cursor Agent CLI (`agent`) was not found. New conversations will use Claude Code. Install the CLI from Settings → General → Cursor Agent, or pick Cursor Agent in the composer once it is installed.';
 
   @override
+  String get cursorAgentWorkspaceSetting => 'CLI workspace';
+
+  @override
+  String get cursorAgentWorkspaceSettingDescription =>
+      'Saved Cursor CLI workspace name passed as `agent --workspace` when starting ACP. Leave empty to use the project folder plus extra roots below. Save sets with `/save-workspace` in the CLI. (cursorAgent.workspace)';
+
+  @override
+  String get cursorAgentWorkspaceNameHint => 'Named workspace (optional)';
+
+  @override
+  String get cursorAgentWorkspaceSaved => 'Saved names';
+
+  @override
+  String get cursorAgentWorkspaceSavedDescription =>
+      'Names found under ~/.cursor when the CLI stores them. You can also type a name above after saving once in the CLI.';
+
+  @override
+  String get cursorAgentWorkspacePickSaved => 'Pick saved…';
+
+  @override
+  String get cursorAgentWorkspaceExtraDirs => 'Extra roots';
+
+  @override
+  String get cursorAgentWorkspaceExtraDirsDescription =>
+      'Additional directories for multi-repo work, passed as repeated `--add-dir` when no named workspace is set. (cursorAgent.extraDirectories)';
+
+  @override
+  String get cursorAgentWorkspaceExtraDirsEmpty =>
+      'No extra roots. The primary project folder is always included.';
+
+  @override
+  String get cursorAgentWorkspaceAddRoot => 'Add folder';
+
+  @override
+  String get cursorAgentWorkspaceRemoveRoot => 'Remove';
+
+  @override
   String get generalSettingsIdeWindows => 'Fast Ide Windows';
 
   @override

@@ -9468,6 +9468,39 @@ abstract class AppLocalizations {
   /// No description provided for @cursorAgentStartupFallback.
   String get cursorAgentStartupFallback;
 
+  /// No description provided for @cursorAgentWorkspaceSetting.
+  String get cursorAgentWorkspaceSetting;
+
+  /// No description provided for @cursorAgentWorkspaceSettingDescription.
+  String get cursorAgentWorkspaceSettingDescription;
+
+  /// No description provided for @cursorAgentWorkspaceNameHint.
+  String get cursorAgentWorkspaceNameHint;
+
+  /// No description provided for @cursorAgentWorkspaceSaved.
+  String get cursorAgentWorkspaceSaved;
+
+  /// No description provided for @cursorAgentWorkspaceSavedDescription.
+  String get cursorAgentWorkspaceSavedDescription;
+
+  /// No description provided for @cursorAgentWorkspacePickSaved.
+  String get cursorAgentWorkspacePickSaved;
+
+  /// No description provided for @cursorAgentWorkspaceExtraDirs.
+  String get cursorAgentWorkspaceExtraDirs;
+
+  /// No description provided for @cursorAgentWorkspaceExtraDirsDescription.
+  String get cursorAgentWorkspaceExtraDirsDescription;
+
+  /// No description provided for @cursorAgentWorkspaceExtraDirsEmpty.
+  String get cursorAgentWorkspaceExtraDirsEmpty;
+
+  /// No description provided for @cursorAgentWorkspaceAddRoot.
+  String get cursorAgentWorkspaceAddRoot;
+
+  /// No description provided for @cursorAgentWorkspaceRemoveRoot.
+  String get cursorAgentWorkspaceRemoveRoot;
+
   /// No description provided for @generalSettingsIdeWindows.
   ///
   /// In en, this message translates to:

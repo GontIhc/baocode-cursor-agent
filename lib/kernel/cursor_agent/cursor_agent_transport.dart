@@ -31,6 +31,7 @@ class CursorAgentLaunch {
     required this.cwd,
     this.executable,
     this.throughShell = false,
+    this.processArguments = const ['acp'],
   });
 
   /// The project directory. Made absolute before the process starts.
@@ -41,6 +42,9 @@ class CursorAgentLaunch {
 
   /// A Windows npm-style `.cmd` / `.bat` shim, which only the shell runs.
   final bool throughShell;
+
+  /// Flags before the `acp` subcommand (`--workspace`, `--add-dir`, …).
+  final List<String> processArguments;
 }
 
 typedef CursorAgentStarter = Future<CursorAgentTransport> Function(

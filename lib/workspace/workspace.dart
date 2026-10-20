@@ -15,6 +15,7 @@ import '../icons/emoji_sheet.dart';
 import '../icons/icon_library.dart';
 import '../icons/project_icon.dart';
 import '../kernel/agent_kernel.dart';
+import '../kernel/cursor_agent/cursor_agent_workspace.dart';
 import '../kernel/kernel_registry.dart';
 import '../kernel/kernel_types.dart';
 import '../l10n/l10n.dart';
@@ -1082,6 +1083,63 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// last ones picked.
   Map<String, String> get _preferredSettings => Map.unmodifiable(_settings);
   final Map<String, String> _settings = {};
+
+  /// Saved Cursor CLI workspace name (`cursorAgent.workspace`); empty none.
+  String? get cursorAgentNamedWorkspace =>
+      _settings[CursorAgentWorkspaceSetting.workspaceKey];
+
+  set cursorAgentNamedWorkspace(String? name) {
+    final trimmed = name?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      if (!_settings.containsKey(CursorAgentWorkspaceSetting.workspaceKey)) {
+        return;
+      }
+      _settings.remove(CursorAgentWorkspaceSetting.workspaceKey);
+    } else if (_settings[CursorAgentWorkspaceSetting.workspaceKey] == trimmed) {
+      return;
+    } else {
+      _settings[CursorAgentWorkspaceSetting.workspaceKey] = trimmed;
+    }
+    _save();
+    notifyListeners();
+  }
+
+  /// Extra roots for Cursor Agent when no named workspace is set.
+  List<String> get cursorAgentExtraDirectories =>
+      CursorAgentWorkspaceSetting.parseExtraDirectories(
+        _settings[CursorAgentWorkspaceSetting.extraDirsKey],
+      );
+
+  set cursorAgentExtraDirectories(List<String> directories) {
+    final encoded = CursorAgentWorkspaceSetting.encodeExtraDirectories(
+      directories,
+    );
+    if (_settings[CursorAgentWorkspaceSetting.extraDirsKey] == encoded) return;
+    if (directories.isEmpty) {
+      _settings.remove(CursorAgentWorkspaceSetting.extraDirsKey);
+    } else {
+      _settings[CursorAgentWorkspaceSetting.extraDirsKey] = encoded;
+    }
+    _save();
+    notifyListeners();
+  }
+
+  void addCursorAgentExtraDirectory(String path) {
+    if (path.isEmpty) return;
+    final dirs = [...cursorAgentExtraDirectories];
+    if (dirs.contains(path)) return;
+    dirs.add(path);
+    cursorAgentExtraDirectories = dirs;
+  }
+
+  void removeCursorAgentExtraDirectory(String path) {
+    final dirs = [...cursorAgentExtraDirectories];
+    if (!dirs.remove(path)) return;
+    cursorAgentExtraDirectories = dirs;
+  }
+
+  ResolvedCursorAgentWorkspace cursorAgentWorkspaceFor(AgentThread thread) =>
+      resolveCursorAgentWorkspace(thread.session.kernelContext);
 
   /// Language servers the Fast Ide is not to recommend installing again.
   Set<String> get ignoredServerRecommendations =>

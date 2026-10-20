@@ -78,9 +78,12 @@ class CursorAgentProcess implements CursorAgentTransport {
             throughShell: launch.throughShell,
           );
     try {
+      final arguments = launch.processArguments.isEmpty
+          ? const ['acp']
+          : launch.processArguments;
       final process = await Process.start(
         executable.path,
-        const ['acp'],
+        arguments,
         workingDirectory: cwd,
         runInShell: executable.throughShell,
       );
