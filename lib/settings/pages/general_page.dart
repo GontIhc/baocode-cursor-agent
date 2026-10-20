@@ -11,6 +11,7 @@ import '../../ide/ide_notifications.dart' show IdeSeverity;
 import '../../kernel/claude_code/claude_core_setting.dart';
 import '../../kernel/claude_code/claude_path_setting.dart';
 import '../../kernel/cursor_agent/cursor_agent_path_setting.dart';
+import '../../kernel/cursor_agent/cursor_cli_workspaces_io.dart';
 import '../../workspace/workspace.dart';
 import '../../kernel/commit_attribution.dart';
 import '../../kernel/prompt_suggestions.dart';
@@ -26,6 +27,7 @@ import '../../tips/feature_tips_controller.dart';
 import '../../tips/feature_tips_view.dart';
 import '../../window/window_settings.dart';
 import '../../workspace/main_window.dart';
+import '../../workspace/window_controls.dart';
 import '../shell_command_actions.dart';
 import '../user_settings.dart';
 import 'settings_dropdown.dart';
@@ -451,6 +453,8 @@ class GeneralSettingsPage extends StatelessWidget {
                           path.isEmpty ? null : path,
                         ),
                       ),
+                      if (workspace case final workspace?)
+                        _CursorAgentWorkspaceSettings(workspace: workspace),
                     ],
                   ),
                 ],
@@ -908,6 +912,115 @@ class _ClaudePathSettingState extends State<_ClaudePathSetting> {
         width: 260,
         onSubmitted: widget.onChanged,
       ),
+    );
+  }
+}
+
+class _CursorAgentWorkspaceSettings extends StatefulWidget {
+  const _CursorAgentWorkspaceSettings({required this.workspace});
+
+  final Workspace workspace;
+
+  @override
+  State<_CursorAgentWorkspaceSettings> createState() =>
+      _CursorAgentWorkspaceSettingsState();
+}
+
+class _CursorAgentWorkspaceSettingsState
+    extends State<_CursorAgentWorkspaceSettings> {
+  late Future<List<String>> _saved = listSavedCursorCliWorkspaces();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ListenableBuilder(
+      listenable: widget.workspace,
+      builder: (context, _) {
+        final named = widget.workspace.cursorAgentNamedWorkspace ?? '';
+        final extras = widget.workspace.cursorAgentExtraDirectories;
+        return Column(
+          children: [
+            SettingsRow(
+              label: l10n.cursorAgentWorkspaceSetting,
+              description: l10n.cursorAgentWorkspaceSettingDescription,
+              trailing: SettingsTextField(
+                value: named,
+                hint: l10n.cursorAgentWorkspaceNameHint,
+                semanticLabel: l10n.cursorAgentWorkspaceSetting,
+                width: 220,
+                onSubmitted: (value) =>
+                    widget.workspace.cursorAgentNamedWorkspace = value.trim(),
+              ),
+            ),
+            FutureBuilder<List<String>>(
+              future: _saved,
+              builder: (context, snapshot) {
+                final saved = snapshot.data ?? const [];
+                if (saved.isEmpty) return const SizedBox.shrink();
+                return SettingsRow(
+                  label: l10n.cursorAgentWorkspaceSaved,
+                  description: l10n.cursorAgentWorkspaceSavedDescription,
+                  trailing: SettingsDropdown(
+                    current: named.isEmpty ? l10n.cursorAgentWorkspacePickSaved : named,
+                    semanticLabel: l10n.cursorAgentWorkspaceSaved,
+                    entries: () => [
+                      for (final name in saved)
+                        IdeMenuAction(
+                          name,
+                          checked: name == named,
+                          onSelected: () =>
+                              widget.workspace.cursorAgentNamedWorkspace = name,
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            if (named.isEmpty)
+              SettingsRow(
+                label: l10n.cursorAgentWorkspaceExtraDirs,
+                description: l10n.cursorAgentWorkspaceExtraDirsDescription,
+                below: [
+                  if (extras.isEmpty)
+                    Text(
+                      l10n.cursorAgentWorkspaceExtraDirsEmpty,
+                      style: SettingsText.path,
+                    )
+                  else
+                    for (final path in extras)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: SelectableText(
+                                path,
+                                style: SettingsText.path,
+                              ),
+                            ),
+                            IdeButton(
+                              label: l10n.cursorAgentWorkspaceRemoveRoot,
+                              secondary: true,
+                              onPressed: () => widget.workspace
+                                  .removeCursorAgentExtraDirectory(path),
+                            ),
+                          ],
+                        ),
+                      ),
+                ],
+                trailing: IdeButton(
+                  label: l10n.cursorAgentWorkspaceAddRoot,
+                  onPressed: () async {
+                    final picked = await WindowControls.pickDirectory();
+                    if (picked != null) {
+                      widget.workspace.addCursorAgentExtraDirectory(picked);
+                    }
+                  },
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

@@ -128,6 +128,7 @@ import 'workspace/chat_grid_view.dart';
 import 'workspace/chat_terminal.dart';
 import 'workspace/editor_launcher.dart' show openExternal;
 import 'workspace/ssh_server_edit.dart';
+import 'workspace/cursor_agent_workspace_bar.dart';
 import 'workspace/new_chat_folder_bar.dart';
 import 'workspace/open_in_editor_button.dart';
 import 'workspace/pin_window_button.dart';
@@ -4031,11 +4032,24 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         // project, and a kept session where it was.
         start: embedded || thread.record != null
             ? null
-            : NewChatFolderBar(
-                workspace: _workspace,
-                thread: thread,
-                openRemote: (onOpen, {host}) =>
-                    _openRemoteProject(onOpen: onOpen, host: host),
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  NewChatFolderBar(
+                    workspace: _workspace,
+                    thread: thread,
+                    openRemote: (onOpen, {host}) =>
+                        _openRemoteProject(onOpen: onOpen, host: host),
+                  ),
+                  if (showsCursorAgentWorkspaceBar(thread))
+                    ListenableBuilder(
+                      listenable: _workspace,
+                      builder: (context, _) => CursorAgentWorkspaceBar(
+                        workspace: _workspace,
+                      ),
+                    ),
+                ],
               ),
         // The setup checklist, over the new agent's composer.
         startHint: switch (_tips) {

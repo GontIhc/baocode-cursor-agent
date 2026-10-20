@@ -9,6 +9,7 @@ import '../kernel_types.dart';
 import 'cursor_agent_process.dart';
 import 'cursor_agent_translator.dart';
 import 'cursor_agent_transport.dart';
+import 'cursor_agent_workspace.dart';
 
 /// Adapts Cursor Agent CLI (`agent acp`) to [AgentKernel].
 ///
@@ -258,7 +259,13 @@ class CursorAgentKernel
       }
       _setHealth(const KernelHealth(KernelHealthStatus.starting));
       _sawExit = false;
-      final transport = await _start(CursorAgentLaunch(cwd: cwd));
+      final resolved = resolveCursorAgentWorkspace(_context);
+      final transport = await _start(
+        CursorAgentLaunch(
+          cwd: cwd,
+          processArguments: resolved.processArguments,
+        ),
+      );
       if (_disposed || epoch != _epoch) {
         transport.close();
         if (_disposed) _markStopped();
@@ -327,9 +334,12 @@ class CursorAgentKernel
       // Cursor reads `.cursor/mcp.json` itself when launched in the
       // project. This client does not inject servers.
     };
-    final extra = _workspaceFolders();
-    if (_additionalDirectories && extra.isNotEmpty) {
-      params['additionalDirectories'] = extra;
+    final resolved = resolveCursorAgentWorkspace(_context);
+    if (!resolved.usesCliWorkspaceFlags) {
+      final extra = _workspaceFolders();
+      if (_additionalDirectories && extra.isNotEmpty) {
+        params['additionalDirectories'] = extra;
+      }
     }
     if (resume != null && resume.isNotEmpty && _loadSession) {
       _sessionId = resume;

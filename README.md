@@ -53,6 +53,10 @@ VS Code and Cursor are built on Electron: each window is a web page, and every c
 
 - Optional: [Claude Code](https://github.com/anthropics/claude-code) if you switch the kernel to Claude Code in Settings → General.
 
+### Multi-repo workspaces (Cursor Agent)
+
+When the **Cursor Agent** kernel is selected, you can run across several repositories: set a saved CLI workspace name or add extra root folders in Settings → General → Cursor Agent (or in the bar above a new chat). The sidebar shows the active workspace and roots. See [CONTRIBUTING.md](CONTRIBUTING.md#multi-repo-workspaces-cursor-cli).
+
 ## Building from source
 
 BaoCode is a Flutter app (Dart SDK `^3.13.4`).

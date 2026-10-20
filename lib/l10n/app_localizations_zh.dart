@@ -5523,6 +5523,43 @@ class AppLocalizationsZh extends AppLocalizations {
       '未找到 Cursor Agent CLI（`agent`）。新对话将使用 Claude Code。请在 设置 → 通用 → Cursor Agent 安装 CLI，或安装后在输入框中选择 Cursor Agent。';
 
   @override
+  String get cursorAgentWorkspaceSetting => 'CLI 工作区';
+
+  @override
+  String get cursorAgentWorkspaceSettingDescription =>
+      '启动 ACP 时作为 `agent --workspace` 传递的已保存工作区名称。留空则使用项目文件夹及下方额外根目录。在 CLI 中用 `/save-workspace` 保存。（cursorAgent.workspace）';
+
+  @override
+  String get cursorAgentWorkspaceNameHint => '命名工作区（可选）';
+
+  @override
+  String get cursorAgentWorkspaceSaved => '已保存名称';
+
+  @override
+  String get cursorAgentWorkspaceSavedDescription =>
+      '在 ~/.cursor 中找到的名称（若 CLI 已写入）。也可在 CLI 中保存一次后于上方输入名称。';
+
+  @override
+  String get cursorAgentWorkspacePickSaved => '选择已保存…';
+
+  @override
+  String get cursorAgentWorkspaceExtraDirs => '额外根目录';
+
+  @override
+  String get cursorAgentWorkspaceExtraDirsDescription =>
+      '未设置命名工作区时，作为重复的 `--add-dir` 传递。（cursorAgent.extraDirectories）';
+
+  @override
+  String get cursorAgentWorkspaceExtraDirsEmpty =>
+      '无额外根目录。始终包含主项目文件夹。';
+
+  @override
+  String get cursorAgentWorkspaceAddRoot => '添加文件夹';
+
+  @override
+  String get cursorAgentWorkspaceRemoveRoot => '移除';
+
+  @override
   String get generalSettingsIdeWindows => 'Fast Ide 窗口';
 
   @override
