@@ -19,6 +19,10 @@
 #                                              standard build left as it is
 #   Actions → Release → Run workflow           build only, to try the build
 #                                              (the editions asked for)
+#   git push origin cursor/release-standard-fe32
+#                                              same as workflow_dispatch with
+#                                              editions=standard (for agents
+#                                              without actions:write)
 #
 # The remote server alone: a server-* tag (remote.yml, which this calls).
 #
@@ -30,6 +34,7 @@ name: Release
 on:
   push:
     tags: ['v*', 'test-*']
+    branches: ['cursor/release-standard-fe32']
   workflow_dispatch:
     inputs:
       editions:
@@ -97,6 +102,8 @@ jobs:
               standard) editions='["standard"]' ;;
               channel) editions='["channel"]' ;;
             esac
+          elif [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF_NAME" = cursor/release-standard-fe32 ]; then
+            editions='["standard"]'
           elif [ "$GITHUB_REF_TYPE" = tag ] && [[ "$GITHUB_REF_NAME" == *-channel ]]; then
             # The channel build alone, signed into the version published,
             # whose standard build is left as it is.
