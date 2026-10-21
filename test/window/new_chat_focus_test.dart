@@ -12,6 +12,8 @@ import 'package:baocode/main.dart';
 import 'package:baocode/sidebar/sidebar.dart';
 import 'package:baocode/window/app_windows.dart';
 import 'package:baocode/window/window_settings.dart';
+import 'package:baocode/workspace/chat_grid_view.dart';
+import 'package:baocode/workspace/frame_layout_builder.dart';
 import 'package:baocode/workspace/workspace.dart';
 
 import 'fake_window_host.dart';
@@ -85,10 +87,8 @@ class _AuthTransport implements CursorAgentTransport {
   }
 }
 
-Finder _sidebarText(String text) => find.descendant(
-  of: find.byType(Sidebar),
-  matching: find.text(text),
-);
+Finder _sidebarText(String text) =>
+    find.descendant(of: find.byType(Sidebar), matching: find.text(text));
 
 /// Row clicks share a double-tap clock, and [WidgetTester.tap] stamps every
 /// pointer event at zero, so a second click on a row renames it. Each tap
@@ -110,13 +110,132 @@ ChatScreen _chat(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('New Chat from a CLI history session focuses the empty chat '
+      'without a window', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final messenger = tester.binding.defaultBinaryMessenger;
+    for (final name in ['baocode/window']) {
+      messenger.setMockMethodCallHandler(
+        MethodChannel(name),
+        (call) async => null,
+      );
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(MethodChannel(name), null),
+      );
+    }
+
+    final project = '/tmp/demo-project';
+    final catalog = _CliCatalog([
+      SessionRecord(
+        id: 'cli-hello',
+        title: 'Smoke CLI history hello',
+        updatedAt: DateTime.now().subtract(const Duration(hours: 16)),
+        cwd: project,
+      ),
+      SessionRecord(
+        id: 'cli-tag',
+        title: 'tag communication',
+        updatedAt: DateTime.now().subtract(const Duration(hours: 14)),
+        cwd: project,
+      ),
+    ]);
+    late final KernelDescriptor cursor;
+    cursor = KernelDescriptor(
+      id: 'cursor-agent',
+      label: 'Cursor Agent',
+      icon: Icons.smart_toy_outlined,
+      description: '',
+      catalog: catalog,
+      create: (context) => CursorAgentKernel(
+        cursor,
+        context,
+        start: (launch) async => _AuthTransport(launch.cwd),
+      ),
+    );
+    final workspace = Workspace(kernels: [cursor]);
+    final host = FakeWindowHost(tester.view);
+    final windows = AppWindows(
+      host: host,
+      workspace: workspace,
+      l10n: () => englishLocalizations,
+      settings: () => const WindowSettings(ideWindows: IdeWindows.separate),
+      isDirectory: (path) async => true,
+      nextFrame: () => tester.binding.endOfFrame,
+    );
+    await windows.start();
+    await tester.pumpWidget(
+      BaoCodeApp(workspace: workspace, windows: windows),
+      wrapWithView: false,
+    );
+    await tester.runAsync(workspace.load);
+    await tester.pump();
+    await tester.pump();
+
+    expect(host.created, isEmpty);
+    final cli = workspace.threads.firstWhere(
+      (thread) => thread.title == 'Smoke CLI history hello',
+    );
+    expect(cli.record, isNotNull);
+
+    await _tap(tester, _sidebarText('Smoke CLI history hello'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(workspace.current, same(cli));
+    expect(_chat(tester).session, same(cli.session));
+    expect(_chat(tester).title, 'Smoke CLI history hello');
+    final createdWindows = host.created.length;
+
+    await _tap(tester, _sidebarText('New Chat'));
+    await tester.pump();
+    await tester.pump();
+
+    final opened = workspace.current!;
+    expect(opened, isNot(same(cli)));
+    expect(opened.untouched, isTrue);
+    expect(opened.record, isNull);
+    expect(opened.project.path, cli.project.path);
+    expect(_chat(tester).session, same(opened.session));
+    expect(_chat(tester).title, 'New Chat');
+    expect(
+      find.descendant(
+        of: find.byType(ChatScreen),
+        matching: find.text('Smoke CLI history hello'),
+      ),
+      findsNothing,
+    );
+    expect(windows.agentWindows, isEmpty);
+    expect(host.created, hasLength(createdWindows));
+
+    // Back on the CLI session, New Chat reuses the untouched one and
+    // shows it again. The editor must not stay on the history chat.
+    await _tap(tester, _sidebarText('Smoke CLI history hello'));
+    await tester.pump();
+    await tester.pump();
+    expect(workspace.current, same(cli));
+    expect(_chat(tester).session, same(cli.session));
+    expect(_chat(tester).title, 'Smoke CLI history hello');
+
+    await _tap(tester, _sidebarText('New Chat').first);
+    await tester.pump();
+    await tester.pump();
+
+    expect(workspace.current, same(opened));
+    expect(opened.untouched, isTrue);
+    expect(_chat(tester).session, same(opened.session));
+    expect(_chat(tester).title, 'New Chat');
+    expect(host.created, hasLength(createdWindows));
+  }, semanticsEnabled: false);
+
   testWidgets(
-    'New Chat from a CLI history session focuses the empty chat '
-    'without a window',
+    'New Chat still switches the editor after a layout rebuild was dropped',
     (tester) async {
       tester.view.physicalSize = const Size(1400, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
+      addTearDown(() => ChatGridView.debugDuringLayout = null);
       final messenger = tester.binding.defaultBinaryMessenger;
       for (final name in ['baocode/window']) {
         messenger.setMockMethodCallHandler(
@@ -136,12 +255,6 @@ void main() {
           updatedAt: DateTime.now().subtract(const Duration(hours: 16)),
           cwd: project,
         ),
-        SessionRecord(
-          id: 'cli-tag',
-          title: 'tag communication',
-          updatedAt: DateTime.now().subtract(const Duration(hours: 14)),
-          cwd: project,
-        ),
       ]);
       late final KernelDescriptor cursor;
       cursor = KernelDescriptor(
@@ -153,7 +266,10 @@ void main() {
         create: (context) => CursorAgentKernel(
           cursor,
           context,
-          start: (launch) async => _AuthTransport(launch.cwd),
+          // The Linux package failed here, before any ACP session existed.
+          start: (_) => Future<CursorAgentTransport>.error(
+            const CursorAgentUnavailable('Cursor Agent CLI was not found'),
+          ),
         ),
       );
       final workspace = Workspace(kernels: [cursor]);
@@ -162,8 +278,7 @@ void main() {
         host: host,
         workspace: workspace,
         l10n: () => englishLocalizations,
-        settings: () =>
-            const WindowSettings(ideWindows: IdeWindows.separate),
+        settings: () => const WindowSettings(ideWindows: IdeWindows.separate),
         isDirectory: (path) async => true,
         nextFrame: () => tester.binding.endOfFrame,
       );
@@ -176,20 +291,58 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(host.created, isEmpty);
       final cli = workspace.threads.firstWhere(
         (thread) => thread.title == 'Smoke CLI history hello',
       );
-      expect(cli.record, isNotNull);
-
       await _tap(tester, _sidebarText('Smoke CLI history hello'));
       await tester.pump();
       await tester.pump();
-
       expect(workspace.current, same(cli));
       expect(_chat(tester).session, same(cli.session));
       expect(_chat(tester).title, 'Smoke CLI history hello');
+      // The failure is reported on the open session, as in the package retest.
+      await tester.pump();
+      expect(find.text('Cursor Agent CLI was not found'), findsOneWidget);
       final createdWindows = host.created.length;
+
+      // A descendant asks every layout builder above the chat to rebuild
+      // during that builder's child layout. [LayoutBuilder] drops the
+      // request and, in release, then ignores later ones: the sidebar moves
+      // and the editor stays. The builders above this chat must not.
+      final reported = FlutterError.onError;
+      FlutterError.onError = (details) {
+        if (details.exceptionAsString().contains(
+          'Build scheduled during frame',
+        )) {
+          return;
+        }
+        reported?.call(details);
+      };
+      addTearDown(() => FlutterError.onError = reported);
+      final layouts = tester
+          .elementList(
+            find.ancestor(
+              of: find.byType(ChatScreen),
+              matching: find.byWidgetPredicate(
+                (widget) =>
+                    widget is FrameLayoutBuilder || widget is LayoutBuilder,
+              ),
+            ),
+          )
+          .toList();
+      expect(layouts, isNotEmpty);
+      ChatGridView.debugDuringLayout = () {
+        for (final layout in layouts) {
+          // [LayoutBuilder] throws here in debug after the flag is stuck.
+          // Release does not throw, and then never rebuilds the editor.
+          try {
+            layout.markNeedsBuild();
+          } on FlutterError {
+            // The debug mutation check.
+          }
+        }
+      };
+      await tester.pump();
 
       await _tap(tester, _sidebarText('New Chat'));
       await tester.pump();
@@ -199,7 +352,6 @@ void main() {
       expect(opened, isNot(same(cli)));
       expect(opened.untouched, isTrue);
       expect(opened.record, isNull);
-      expect(opened.project.path, cli.project.path);
       expect(_chat(tester).session, same(opened.session));
       expect(_chat(tester).title, 'New Chat');
       expect(
@@ -209,26 +361,14 @@ void main() {
         ),
         findsNothing,
       );
+      expect(
+        find.descendant(
+          of: find.byType(Sidebar),
+          matching: find.text('New Chat'),
+        ),
+        findsWidgets,
+      );
       expect(windows.agentWindows, isEmpty);
-      expect(host.created, hasLength(createdWindows));
-
-      // Back on the CLI session, New Chat reuses the untouched one and
-      // shows it again. The editor must not stay on the history chat.
-      await _tap(tester, _sidebarText('Smoke CLI history hello'));
-      await tester.pump();
-      await tester.pump();
-      expect(workspace.current, same(cli));
-      expect(_chat(tester).session, same(cli.session));
-      expect(_chat(tester).title, 'Smoke CLI history hello');
-
-      await _tap(tester, _sidebarText('New Chat').first);
-      await tester.pump();
-      await tester.pump();
-
-      expect(workspace.current, same(opened));
-      expect(opened.untouched, isTrue);
-      expect(_chat(tester).session, same(opened.session));
-      expect(_chat(tester).title, 'New Chat');
       expect(host.created, hasLength(createdWindows));
     },
     semanticsEnabled: false,

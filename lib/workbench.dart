@@ -127,6 +127,7 @@ import 'workspace/chat_drag.dart';
 import 'workspace/chat_grid_view.dart';
 import 'workspace/chat_terminal.dart';
 import 'workspace/editor_launcher.dart' show openExternal;
+import 'workspace/frame_layout_builder.dart';
 import 'workspace/ssh_server_edit.dart';
 import 'workspace/cursor_agent_workspace_bar.dart';
 import 'workspace/new_chat_folder_bar.dart';
@@ -2532,7 +2533,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   @override
   Widget build(BuildContext context) {
     if (_main) _syncFileMenu(context.l10n);
-    return LayoutBuilder(
+    // The window's size, known only once laid out. [FrameLayoutBuilder] rather
+    // than [LayoutBuilder]: a rebuild asked for while the chat is being laid
+    // out must still run, or New Chat leaves the editor on the session it
+    // was showing.
+    return FrameLayoutBuilder(
       builder: (context, constraints) {
         _windowWidth = constraints.maxWidth;
         final narrow = constraints.maxWidth < Workbench.narrowWidth;

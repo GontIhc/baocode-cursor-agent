@@ -29,6 +29,12 @@ typedef ChatPanePlace = ({bool topLeft, bool topRight, bool top, bool alone});
 /// there ([ChatDrag]): the half of the pane under the pointer on the side
 /// it is near, where the grid can split that way; else the pane itself.
 class ChatGridView extends StatefulWidget {
+  /// Runs while the panes are being laid out, inside the editor's layout
+  /// builder's child layout. Tests use it to drop a rebuild the way the
+  /// Linux package did; production leaves it null.
+  @visibleForTesting
+  static VoidCallback? debugDuringLayout;
+
   const ChatGridView({
     super.key,
     required this.grid,
@@ -383,6 +389,11 @@ class _GridLayout extends MultiChildLayoutDelegate {
   @override
   void performLayout(Size size) {
     onLayout(size);
+    final duringLayout = ChatGridView.debugDuringLayout;
+    if (duringLayout != null) {
+      ChatGridView.debugDuringLayout = null;
+      duringLayout();
+    }
     for (final MapEntry(key: pane, value: rect)
         in grid.layout(size, gap: _gap, minPane: _min).entries) {
       if (hasChild(pane)) _place(pane, rect);

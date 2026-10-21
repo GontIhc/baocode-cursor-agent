@@ -2571,16 +2571,24 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// layout. Notifying then asks an ancestor to rebuild during build; the
   /// framework drops that rebuild and the sidebar moves on while the editor
   /// stays on the previous session. The notice waits until the frame ends.
+  ///
+  /// [SchedulerBinding.ensureVisualUpdate] does not ask for a frame during
+  /// a frame, so the deferred notice schedules one itself. Otherwise the
+  /// post-frame rebuild is never drawn and the editor stays where it was.
   @override
   void notifyListeners() {
-    if (SchedulerBinding.instance.schedulerPhase ==
-        SchedulerPhase.persistentCallbacks) {
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks ||
+        phase == SchedulerPhase.transientCallbacks) {
       if (_disposed || _notifyDeferred) return;
       _notifyDeferred = true;
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        _notifyDeferred = false;
-        if (!_disposed) notifyListeners();
-      });
+      SchedulerBinding.instance
+        ..scheduleFrame()
+        ..addPostFrameCallback((_) {
+          _notifyDeferred = false;
+          if (!_disposed) notifyListeners();
+        });
       return;
     }
     if (_chatViewRestored && jsonEncode(_chatView) != _chatViewSaved) {
