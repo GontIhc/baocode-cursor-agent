@@ -182,17 +182,23 @@ Future<List<_Hit>> _scan(List<String>? roots) async {
   return byId.values.toList();
 }
 
+/// Lists [root] without [Directory.listSync]. A large `~/.cursor/chats`
+/// tree is read on the UI isolate (sidebar catalog on launch and resume);
+/// a synchronous walk holds every frame until it finishes.
 Stream<_Hit> _walk(Directory root) async* {
   final pending = <Directory>[root];
   while (pending.isNotEmpty) {
     final dir = pending.removeLast();
-    List<FileSystemEntity> children;
+    final List<FileSystemEntity> children;
     try {
-      children = dir.listSync(followLinks: false);
+      children = await dir.list(followLinks: false).toList();
     } on FileSystemException {
       continue;
     }
+    var steps = 0;
     for (final child in children) {
+      // Let a frame run between batches of session directories.
+      if (++steps % 16 == 0) await Future<void>.delayed(Duration.zero);
       if (child is! Directory) continue;
       final metaFile = File(p.join(child.path, 'meta.json'));
       final dbFile = File(p.join(child.path, 'store.db'));

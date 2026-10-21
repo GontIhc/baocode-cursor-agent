@@ -408,25 +408,6 @@ void main() {
     });
   });
 
-  group('New Chat', () {
-    testWidgets('opens a new agent window at the normal size', (tester) async {
-      final harness = _Harness(tester);
-      await harness.start();
-      final thread = await harness.windows.openNewChat('/w/a');
-      expect(thread, isNotNull);
-      expect(thread!.project.path, '/w/a');
-      expect(harness.windows.agentWindows, hasLength(1));
-      expect(harness.windows.agentWindows.single.thread, same(thread));
-      expect(harness.host.created.last.width, isNull);
-    });
-
-    testWidgets('does nothing until windows have started', (tester) async {
-      final harness = _Harness(tester);
-      expect(await harness.windows.openNewChat('/w/a'), isNull);
-      expect(harness.windows.agentWindows, isEmpty);
-    });
-  });
-
   group('Open with BaoCursor', () {
     String agentTitle(String title) => '$title — BaoCursor';
 

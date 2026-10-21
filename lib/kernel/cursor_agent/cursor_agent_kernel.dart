@@ -559,6 +559,10 @@ class CursorAgentKernel
   void _noteConfig(Object? raw) {
     final config = parseCursorAcpConfig(raw);
     if (config == null) return;
+    // The CLI resends the full config (session/new, session/load, and
+    // config_option_update). An unchanged payload must not rebuild the
+    // chat and the sidebar.
+    final before = _configFingerprint();
     if (config.model case final parsed?) {
       _acpModelConfigId = parsed.configId;
       _acpModelCurrent = parsed.currentValue;
@@ -603,7 +607,57 @@ class CursorAgentKernel
         _parameterPicked[param.kind] = param.currentValue!;
       }
     }
-    emitInfoChanged();
+    if (_configFingerprint() != before) emitInfoChanged();
+  }
+
+  /// Model, parameters, and picks the composer shows. Compared around
+  /// [_noteConfig] so a duplicate config update is a no-op.
+  String _configFingerprint() {
+    final buffer = StringBuffer()
+      ..write(_acpModelConfigId)
+      ..write('\u0001')
+      ..write(_acpModelCurrent)
+      ..write('\u0001')
+      ..write(_selectedModel);
+    final options = _acpModelOptions;
+    if (options != null) {
+      for (final option in options) {
+        buffer
+          ..write('\u0001')
+          ..write(option.id)
+          ..write('\u0001')
+          ..write(option.label);
+      }
+    }
+    for (final kind in const [
+      KernelChoiceKind.context,
+      KernelChoiceKind.effort,
+      KernelChoiceKind.thinking,
+      KernelChoiceKind.fast,
+    ]) {
+      final param = _parameters[kind];
+      buffer
+        ..write('\u0002')
+        ..write(kind.name)
+        ..write('\u0001')
+        ..write(param?.configId)
+        ..write('\u0001')
+        ..write(param?.currentValue)
+        ..write('\u0001')
+        ..write(param?.toggle)
+        ..write('\u0001')
+        ..write(_parameterPicked[kind]);
+      if (param != null) {
+        for (final option in param.options) {
+          buffer
+            ..write('\u0001')
+            ..write(option.id)
+            ..write('\u0001')
+            ..write(option.label);
+        }
+      }
+    }
+    return buffer.toString();
   }
 
   KernelOption _shownModelOption(KernelOption option) => KernelOption(

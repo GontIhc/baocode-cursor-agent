@@ -28,8 +28,9 @@ class CursorAgentWorkspaceSidebar extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final l10n = context.l10n;
-    final resolved = workspace.cursorAgentWorkspaceFor(thread);
-    final named = resolved.namedWorkspace?.trim();
+    // Live preferences, the same ones cursorAgentFoldersFor reads. Resolved
+    // once: this section rebuilds with the rest of the sidebar.
+    final named = workspace.cursorAgentNamedWorkspace?.trim();
     final folders = workspace.cursorAgentFoldersFor(thread);
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
