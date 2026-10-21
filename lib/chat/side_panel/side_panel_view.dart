@@ -38,6 +38,7 @@ import '../../ide/terminal/terminal_service.dart';
 import '../../ide/terminal/terminal_tabs.dart';
 import '../../ide/terminal/terminal_view.dart';
 import '../../kernel/kernel_types.dart' show KernelTask;
+import '../../workspace/frame_layout_builder.dart';
 import '../../workspace/window_controls.dart';
 import '../chat_models.dart' show CommandStatus;
 import '../../keybindings/chat_keybindings.dart';
@@ -161,7 +162,7 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: _panel,
-    builder: (context, _) => LayoutBuilder(
+    builder: (context, _) => FrameLayoutBuilder(
       builder: (context, constraints) {
         final room = constraints.maxWidth;
         final shown = _panel.shown && !widget.hidden;

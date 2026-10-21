@@ -18,6 +18,7 @@ import '../sidebar/sidebar.dart' show SidebarIconButton;
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
+import 'frame_layout_builder.dart';
 
 /// Toggle Terminal (⌃`): the chat window's panel, as the IDE's.
 const toggleTerminalCommand = 'workbench.action.terminal.toggleTerminal';
@@ -231,7 +232,7 @@ class _ChatTerminalAreaState extends State<ChatTerminalArea> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: _terminals,
-    builder: (context, _) => LayoutBuilder(
+    builder: (context, _) => FrameLayoutBuilder(
       builder: (context, constraints) {
         final service = _terminals.current;
         final shown = _terminals.shown;
