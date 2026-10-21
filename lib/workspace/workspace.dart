@@ -1135,26 +1135,41 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     cursorAgentExtraDirectories = dirs;
   }
 
-  /// What Cursor Agent is using for [thread], including workspace folders
-  /// and extra directories changed after the thread was opened.
+  /// What Cursor Agent is using for [thread].
   ///
-  /// The kernel context copies settings once, when the thread is created.
-  /// The composer edits the live preferences, so the sidebar reads those.
+  /// A new chat that nothing has been sent to follows the live preferences:
+  /// the composer edits those, and the sidebar shows them. A kept chat does
+  /// not. Those preferences are copied into every session when it is listed,
+  /// and reading them back made every folder group show the same workspace.
   ResolvedCursorAgentWorkspace cursorAgentWorkspaceFor(AgentThread thread) {
     final context = thread.session.kernelContext;
     final settings = Map<String, String>.from(context.settings);
-    final named = cursorAgentNamedWorkspace?.trim() ?? '';
-    if (named.isEmpty) {
+    if (thread.untouched) {
+      final named = cursorAgentNamedWorkspace?.trim() ?? '';
+      if (named.isEmpty) {
+        settings.remove(CursorAgentWorkspaceSetting.workspaceKey);
+      } else {
+        settings[CursorAgentWorkspaceSetting.workspaceKey] = named;
+      }
+      final extras = cursorAgentExtraDirectories;
+      if (extras.isEmpty) {
+        settings.remove(CursorAgentWorkspaceSetting.extraDirsKey);
+      } else {
+        settings[CursorAgentWorkspaceSetting.extraDirsKey] =
+            CursorAgentWorkspaceSetting.encodeExtraDirectories(extras);
+      }
+    } else {
       settings.remove(CursorAgentWorkspaceSetting.workspaceKey);
-    } else {
-      settings[CursorAgentWorkspaceSetting.workspaceKey] = named;
-    }
-    final extras = cursorAgentExtraDirectories;
-    if (extras.isEmpty) {
       settings.remove(CursorAgentWorkspaceSetting.extraDirsKey);
-    } else {
-      settings[CursorAgentWorkspaceSetting.extraDirsKey] =
-          CursorAgentWorkspaceSetting.encodeExtraDirectories(extras);
+      final own = _agentSettings[thread.id];
+      final named = own?[CursorAgentWorkspaceSetting.workspaceKey]?.trim();
+      if (named != null && named.isNotEmpty) {
+        settings[CursorAgentWorkspaceSetting.workspaceKey] = named;
+      }
+      final extras = own?[CursorAgentWorkspaceSetting.extraDirsKey];
+      if (extras != null && extras.isNotEmpty) {
+        settings[CursorAgentWorkspaceSetting.extraDirsKey] = extras;
+      }
     }
     final multi = workspaceOf(thread.project);
     return resolveCursorAgentWorkspace(
@@ -1172,9 +1187,12 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     );
   }
 
-  /// Folders in [thread]'s current workspace: multi-root folders, extra
-  /// `--add-dir` roots, and the project folder. The workspace file's own
-  /// stub directory is not a folder the user added.
+  /// Folders in [thread]'s workspace: its multi-root folders, its project
+  /// directory, and `--add-dir` roots that belong to this chat. The
+  /// workspace file's own stub directory is not a folder the user added.
+  ///
+  /// Live extra directories are included for a new chat only. Applying them
+  /// to every kept session left the sidebar on the previous folder group.
   List<String> cursorAgentFoldersFor(AgentThread thread) {
     final resolved = cursorAgentWorkspaceFor(thread);
     final multi = workspaceOf(thread.project);
@@ -1193,9 +1211,6 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     }
     for (final root in resolved.displayRoots) {
       add(root);
-    }
-    for (final extra in cursorAgentExtraDirectories) {
-      add(extra);
     }
     if (folders.isEmpty) add(thread.project.path);
     return folders;

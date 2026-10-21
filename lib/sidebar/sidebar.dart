@@ -788,6 +788,7 @@ class _SidebarState extends State<Sidebar>
             if (_current case final thread?
                 when thread.kernel.id == KernelRegistry.cursorAgent.id)
               CursorAgentWorkspaceSidebar(
+                key: ValueKey(thread.project.path),
                 workspace: _workspace,
                 thread: thread,
               ),
