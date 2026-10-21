@@ -402,8 +402,148 @@ void main() {
     kernel.dispose();
   });
 
-  test('without session/load the CLI chat opens and history is unavailable', () async {
-    final transport = ScriptedCursorTransport(onPrompt: (_, _) {});
+  test('parameterized model ids are config options, not --model', () async {
+    const options = [
+      {
+        'id': 'model',
+        'category': 'model',
+        'type': 'select',
+        'currentValue': 'auto',
+        'options': [
+          {'value': 'auto', 'name': 'Auto'},
+          {'value': 'claude-opus-5', 'name': 'Opus'},
+        ],
+      },
+      {
+        'id': 'effort',
+        'type': 'select',
+        'currentValue': 'low',
+        'options': [
+          {'value': 'low', 'name': 'Low'},
+          {'value': 'medium', 'name': 'Medium'},
+          {'value': 'high', 'name': 'High'},
+        ],
+      },
+      {
+        'id': 'context',
+        'type': 'select',
+        'currentValue': '200k',
+        'options': [
+          {'value': '200k', 'name': '200k'},
+          {'value': '300k', 'name': '300k'},
+        ],
+      },
+      {'id': 'fast', 'type': 'boolean', 'name': 'Fast', 'currentValue': false},
+    ];
+    final launches = <CursorAgentLaunch>[];
+    final transport = ScriptedCursorTransport(
+      onPrompt: (_, _) {},
+      configOptions: options,
+    );
+    final kernel = CursorAgentKernel(
+      _descriptor,
+      const KernelContext(
+        cwd: '/work',
+        settings: {
+          'model': 'claude-opus-5-5[context=300k,effort=medium,fast=false]',
+        },
+      ),
+      start: (launch) async {
+        launches.add(launch);
+        return transport;
+      },
+    );
+    kernel.prepare();
+    await pumpEventQueue();
+
+    expect(launches.single.model, isNull);
+    final initialize = transport.written.firstWhere(
+      (message) => message['method'] == CursorAcp.initialize,
+    );
+    final params = initialize['params'] as Map<String, Object?>;
+    final caps = params['clientCapabilities'] as Map<String, Object?>;
+    expect(caps['_meta'], {'parameterizedModelPicker': true});
+    expect(kernel.model.selected, 'claude-opus-5');
+    expect(
+      kernel.model.options.map((option) => option.label),
+      isNot(contains(contains('['))),
+    );
+    expect(kernel.effort.selected, 'medium');
+    expect(kernel.contextSize.selected, '300k');
+    expect(kernel.fast.toggle, isTrue);
+    expect(kernel.fast.selected, 'false');
+    final sets = [
+      for (final message in transport.written)
+        if (message['method'] == CursorAcp.sessionSetConfigOption)
+          message['params'],
+    ];
+    expect(sets, [
+      {'sessionId': 'sess_1', 'configId': 'model', 'value': 'claude-opus-5'},
+      {'sessionId': 'sess_1', 'configId': 'context', 'value': '300k'},
+      {'sessionId': 'sess_1', 'configId': 'effort', 'value': 'medium'},
+    ]);
+    kernel.effort.select('claude-opus-5', 'high');
+    await pumpEventQueue();
+    expect(kernel.effort.selected, 'high');
+    expect(
+      transport.written.lastWhere(
+        (message) => message['method'] == CursorAcp.sessionSetConfigOption,
+      )['params'],
+      {'sessionId': 'sess_1', 'configId': 'effort', 'value': 'high'},
+    );
+    kernel.dispose();
+  });
+
+  test('session/load invalid params starts a usable session', () async {
+    final transport = ScriptedCursorTransport(
+      onPrompt: (_, _) {},
+      loadSession: true,
+      loadError: 'Invalid params',
+      loadErrorCode: -32602,
+    );
+    final kernel = CursorAgentKernel(
+      _descriptor,
+      KernelContext(
+        cwd: '/work',
+        resume: SessionRecord(
+          id: '72cf391d-89e3-4c63-b74d-9c99afa14807',
+          title: 'Carplay Navigation Freeze',
+          updatedAt: DateTime.utc(2026, 1, 1),
+          cwd: '/work',
+        ),
+      ),
+      start: (_) async => transport,
+    );
+    final events = <KernelEvent>[];
+    kernel.events.listen(events.add);
+    kernel.prepare();
+    await pumpEventQueue();
+
+    expect(kernel.health.status, KernelHealthStatus.ready);
+    expect(kernel.historyUnavailable, isTrue);
+    expect(kernel.sessionId, 'sess_1');
+    final load = transport.written.firstWhere(
+      (message) => message['method'] == CursorAcp.sessionLoad,
+    );
+    expect(load['params'], {
+      'sessionId': '72cf391d-89e3-4c63-b74d-9c99afa14807',
+      'cwd': '/work',
+      'mcpServers': <Object?>[],
+    });
+    expect(transport.methods, contains(CursorAcp.sessionNew));
+    expect(
+      events.whereType<ItemUpserted>().map((event) => event.item),
+      isNot(contains(isA<NoticeItem>())),
+    );
+    kernel.dispose();
+  });
+
+  test('a process exit during session/load boots a new session', () async {
+    final transport = ScriptedCursorTransport(
+      onPrompt: (_, _) {},
+      loadSession: true,
+      loadExits: true,
+    );
     final kernel = CursorAgentKernel(
       _descriptor,
       KernelContext(
@@ -417,20 +557,52 @@ void main() {
       ),
       start: (_) async => transport,
     );
-    final events = <KernelEvent>[];
-    kernel.events.listen(events.add);
     kernel.prepare();
     await pumpEventQueue();
 
-    expect(kernel.sessionId, 'sess_1');
+    expect(kernel.health.status, KernelHealthStatus.ready);
     expect(kernel.historyUnavailable, isTrue);
-    expect(transport.methods, isNot(contains(CursorAcp.sessionLoad)));
+    expect(kernel.sessionId, 'sess_1');
     expect(
-      events.whereType<ItemUpserted>().map((event) => event.item),
-      isNot(contains(isA<NoticeItem>())),
+      transport.methods.where((method) => method == CursorAcp.sessionLoad),
+      [CursorAcp.sessionLoad],
     );
+    expect(transport.methods, contains(CursorAcp.sessionNew));
     kernel.dispose();
   });
+
+  test(
+    'without session/load the CLI chat opens and history is unavailable',
+    () async {
+      final transport = ScriptedCursorTransport(onPrompt: (_, _) {});
+      final kernel = CursorAgentKernel(
+        _descriptor,
+        KernelContext(
+          cwd: '/work',
+          resume: SessionRecord(
+            id: 'cli-session',
+            title: 'Old',
+            updatedAt: DateTime.utc(2026, 1, 1),
+            cwd: '/work',
+          ),
+        ),
+        start: (_) async => transport,
+      );
+      final events = <KernelEvent>[];
+      kernel.events.listen(events.add);
+      kernel.prepare();
+      await pumpEventQueue();
+
+      expect(kernel.sessionId, 'sess_1');
+      expect(kernel.historyUnavailable, isTrue);
+      expect(transport.methods, isNot(contains(CursorAcp.sessionLoad)));
+      expect(
+        events.whereType<ItemUpserted>().map((event) => event.item),
+        isNot(contains(isA<NoticeItem>())),
+      );
+      kernel.dispose();
+    },
+  );
 
   test('session/load with no transcript marks history unavailable', () async {
     final transport = ScriptedCursorTransport(
@@ -493,6 +665,9 @@ class ScriptedCursorTransport implements CursorAgentTransport {
     this.loadSession = false,
     this.configOptions,
     this.authError,
+    this.loadError,
+    this.loadErrorCode = -32000,
+    this.loadExits = false,
   });
 
   final void Function(
@@ -504,6 +679,11 @@ class ScriptedCursorTransport implements CursorAgentTransport {
   final bool loadSession;
   final Object? configOptions;
   final String? authError;
+  final String? loadError;
+  final int loadErrorCode;
+
+  /// The process exits while `session/load` is in flight.
+  final bool loadExits;
 
   final StreamController<Map<String, Object?>> _out =
       StreamController.broadcast(sync: true);
@@ -567,6 +747,17 @@ class ScriptedCursorTransport implements CursorAgentTransport {
           if (configOptions != null) 'configOptions': configOptions,
         });
       case CursorAcp.sessionLoad:
+        if (loadExits) {
+          notify(CursorAcp.transportExit, {
+            'code': 1,
+            'stderr': 'Invalid params',
+          });
+          return;
+        }
+        if (loadError != null) {
+          replyError(id, loadError!, code: loadErrorCode);
+          return;
+        }
         reply(id, {
           'modes': {
             'currentModeId': 'agent',
@@ -614,11 +805,11 @@ class ScriptedCursorTransport implements CursorAgentTransport {
     if (!_out.isClosed) _out.add({'id': id, 'result': result});
   }
 
-  void replyError(Object? id, String message) {
+  void replyError(Object? id, String message, {int code = -32000}) {
     if (!_out.isClosed) {
       _out.add({
         'id': id,
-        'error': {'code': -32000, 'message': message},
+        'error': {'code': code, 'message': message},
       });
     }
   }

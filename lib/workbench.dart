@@ -866,6 +866,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     // commands.
     if (_agentWindow) {
       return {
+        ChatCommandIds.newChat: () => _newAgent(_agentThread?.project),
         'workbench.action.toggleSidebarVisibility': _toggle,
         openSettingsCommandId: () => unawaited(openSettings()),
         openKeybindingsCommandId: () =>
@@ -905,7 +906,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       modelWelcomeCommandId: _showModelWelcome,
       // As the sidebar's New Agent button: a folder first, without one.
       if (_workspace.sidebarProjects.isNotEmpty)
-        ChatCommandIds.newChat: _newAgent
+        ChatCommandIds.newChat: () => _newAgent()
       else if (WindowControls.canPickDirectory)
         ChatCommandIds.newChat: () => unawaited(_openFolder()),
       if (current != null && panes.length > 1)
@@ -1096,10 +1097,19 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     _openAgent(panes[((at < 0 ? 0 : at) + step) % panes.length]);
   }
 
-  void _newAgent() {
+  void _newAgent([Project? project]) {
     _closeDrawer();
     _closeCustomize();
-    _focusChat(_workspace.create());
+    final windows = _windows;
+    final folder = project?.path ?? _workspace.current?.project.path;
+    if (windows != null &&
+        windows.started &&
+        folder != null &&
+        folder.isNotEmpty) {
+      unawaited(windows.openNewChat(folder));
+      return;
+    }
+    _focusChat(_workspace.create(project: project));
   }
 
   /// The search palette, on its agents.
@@ -2874,11 +2884,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       workspace: _workspace,
       current: agent,
       onSelect: agent == null ? null : _showInWindow,
-      onNewAgent: agent == null
-          ? null
-          : (project) => _showInWindow(
-              _workspace.newWindowAgent((project ?? agent.project).path),
-            ),
+      onNewAgent: (project) => _newAgent(project),
       link: _sidebarLink,
       onCollapse: _toggle,
       onOpened: () {
@@ -4045,9 +4051,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
                   if (showsCursorAgentWorkspaceBar(thread))
                     ListenableBuilder(
                       listenable: _workspace,
-                      builder: (context, _) => CursorAgentWorkspaceBar(
-                        workspace: _workspace,
-                      ),
+                      builder: (context, _) =>
+                          CursorAgentWorkspaceBar(workspace: _workspace),
                     ),
                 ],
               ),

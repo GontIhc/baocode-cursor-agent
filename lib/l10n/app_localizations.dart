@@ -4814,6 +4814,12 @@ abstract class AppLocalizations {
   /// **'Effort'**
   String get composerSettingEffort;
 
+  /// Heading of a Cursor model's thinking switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking'**
+  String get composerSettingThinking;
+
   /// No description provided for @composerNoResults.
   ///
   /// In en, this message translates to:
@@ -9656,6 +9662,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No extra roots. The primary project folder is always included.'**
   String get cursorAgentWorkspaceExtraDirsEmpty;
+
+  /// Sidebar heading for the folders in the current Cursor workspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Folders in this workspace'**
+  String get cursorWorkspaceFoldersTitle;
+
+  /// Sidebar line for a Cursor CLI --workspace name.
+  ///
+  /// In en, this message translates to:
+  /// **'Named workspace: {name}'**
+  String cursorWorkspaceFoldersNamed(String name);
 
   /// No description provided for @cursorAgentWorkspaceAddRoot.
   ///

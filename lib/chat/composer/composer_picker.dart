@@ -906,6 +906,8 @@ class ComposerPickerState extends State<ComposerPicker> {
                   KernelChoiceKind.context =>
                     context.l10n.composerSettingContext,
                   KernelChoiceKind.effort => context.l10n.composerSettingEffort,
+                  KernelChoiceKind.thinking =>
+                    context.l10n.composerSettingThinking,
                   _ => null,
                 }
                 case final heading?)

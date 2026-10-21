@@ -95,7 +95,15 @@ abstract interface class KernelChoiceSource {
   void select(String id);
 }
 
-enum KernelChoiceKind { model, mode, permission, effort, context, fast }
+enum KernelChoiceKind {
+  model,
+  mode,
+  permission,
+  effort,
+  context,
+  fast,
+  thinking,
+}
 
 abstract interface class SelectsModel {
   KernelChoiceSource get model;
@@ -173,6 +181,12 @@ abstract interface class SelectsContextSize {
 /// Whether supported upstream models use the Fast service tier for this chat.
 abstract interface class SelectsFast {
   ModelSetting get fast;
+}
+
+/// Whether a Cursor model thinks before it answers, when that is its own
+/// switch beside effort (`thinking` on the ACP model picker).
+abstract interface class SelectsThinking {
+  ModelSetting get thinking;
 }
 
 abstract interface class ProvidesCommands {

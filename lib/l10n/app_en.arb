@@ -1713,6 +1713,10 @@
   "@composerSettingEffort": {
     "description": "Heading of the model's reasoning effort choices."
   },
+  "composerSettingThinking": "Thinking",
+  "@composerSettingThinking": {
+    "description": "Heading of a Cursor model's thinking switch."
+  },
   "composerNoResults": "No results",
   "stripOpen": "Open {name}",
   "@stripOpen": {
@@ -4325,6 +4329,19 @@
   "cursorAgentWorkspaceExtraDirs": "Extra roots",
   "cursorAgentWorkspaceExtraDirsDescription": "Additional directories for multi-repo work, passed as repeated `--add-dir` when no named workspace is set. (cursorAgent.extraDirectories)",
   "cursorAgentWorkspaceExtraDirsEmpty": "No extra roots. The primary project folder is always included.",
+  "cursorWorkspaceFoldersTitle": "Folders in this workspace",
+  "@cursorWorkspaceFoldersTitle": {
+    "description": "Sidebar heading for the folders in the current Cursor workspace."
+  },
+  "cursorWorkspaceFoldersNamed": "Named workspace: {name}",
+  "@cursorWorkspaceFoldersNamed": {
+    "description": "Sidebar line for a Cursor CLI --workspace name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "cursorAgentWorkspaceAddRoot": "Add folder",
   "cursorAgentWorkspaceRemoveRoot": "Remove",
   "generalSettingsIdeWindows": "Fast Ide Windows",

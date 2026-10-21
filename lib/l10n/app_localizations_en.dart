@@ -2768,6 +2768,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get composerSettingEffort => 'Effort';
 
   @override
+  String get composerSettingThinking => 'Thinking';
+
+  @override
   String get composerNoResults => 'No results';
 
   @override
@@ -5983,6 +5986,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cursorAgentWorkspaceExtraDirsEmpty =>
       'No extra roots. The primary project folder is always included.';
+
+  @override
+  String get cursorWorkspaceFoldersTitle => 'Folders in this workspace';
+
+  @override
+  String cursorWorkspaceFoldersNamed(String name) {
+    return 'Named workspace: $name';
+  }
 
   @override
   String get cursorAgentWorkspaceAddRoot => 'Add folder';

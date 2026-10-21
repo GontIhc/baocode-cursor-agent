@@ -16,8 +16,8 @@ References:
 | Session lifecycle | `cursor_agent_kernel.dart` | `session/new`, `session/prompt`, `session/cancel`, `session/set_mode`. |
 | Session resume (replay) | `cursor_agent_kernel.dart` | `session/load` when `agentCapabilities.loadSession` is true; replays via translator `replaying`. |
 | Modes | `cursor_agent_kernel.dart`, composer | `SelectsMode`: agent / plan / ask; `session/set_mode` + `current_mode_update`. |
-| Model picker | `cursor_agent_kernel.dart`, `session_model_picker.dart` | `SelectsModel`. ACP `configOptions` category `model` (from `session/new`, `session/load`, or `config_option_update`) is the menu; a pick calls `session/set_config_option`. If the CLI never advertises models, the menu is CLI default, the current id, recent ids, and a typed id. That path writes `cursorAgent.model` / `cursorAgent.recentModels` and restarts the process as `agent --model <id> acp` (confirm dialog once a session exists). A resumed CLI chat omits `--model` until the user picks, so the stored model stays. |
-| CLI history | `cursor_agent_sessions_io.dart` | Sidebar catalog reads Cursor CLI `chats/` and `acp-sessions/` (not Claude `projects/*.jsonl`, not IDE `agent-transcripts`). Opening a row resumes with `session/load` when advertised; otherwise the row still opens and the transcript says the history stays in the CLI store. |
+| Model picker | `cursor_agent_kernel.dart`, `session_model_picker.dart` | `SelectsModel`. `initialize` sets `clientCapabilities._meta.parameterizedModelPicker`. ACP `configOptions` category `model` is the menu (bare ids). Effort, context, fast, and thinking, when advertised, are the same settings submenu and `session/set_config_option` (`effort` / `reasoning` / `reasoning_effort`, `context`, `fast`, `thinking`). `--model` is only a bare CLI id. An exploded `id[context=…,effort=…,fast=…]` value is never passed as `--model`. If the CLI never advertises models, the menu is CLI default, the current id, recent ids, and a typed id, and that path restarts as `agent --model <id> acp`. A resumed CLI chat omits `--model` and does not rewrite stored parameters until the user picks. |
+| CLI history | `cursor_agent_sessions_io.dart` | Sidebar catalog reads Cursor CLI `chats/` and `acp-sessions/` (not Claude `projects/*.jsonl`, not IDE `agent-transcripts`). Opening a row resumes with `session/load` (`sessionId`, `cwd`, empty `mcpServers` only) when advertised. Invalid params or a process exit on load starts a new session and leaves the honest empty state (history stays in the CLI store). |
 | User turn | `cursor_agent_kernel.dart` | Text + optional notes in `session/prompt`. |
 | Streaming text / thinking | `cursor_agent_translator.dart` | `agent_message_chunk`, `agent_thought_chunk`. |
 | Tool calls | `cursor_agent_translator.dart` | `tool_call` / `tool_call_update` → chat items. |
@@ -52,7 +52,7 @@ References:
 
 | Claude (`claude_code_kernel.dart`) | Cursor today | Impact |
 | --- | --- | --- |
-| `SelectsModel` + providers / proxy | Cursor model id only | No Claude provider catalog, proxy, or effort/context tiers. ACP model options when advertised; otherwise `cursorAgent.model`. |
+| `SelectsModel` + providers / proxy | Cursor model id only | No Claude provider catalog or proxy. Effort, context, fast, and thinking are ACP config options when the CLI advertises them, not Claude tiers. |
 | `SelectsPermission` modes | Not implemented | Approvals are per tool request only. |
 | `ProvidesCommands` | Not implemented | No `/goal`, custom slash commands from shell. |
 | `QueuesMessages` | Not implemented | Cannot queue while busy. |
@@ -70,7 +70,7 @@ References:
 
 ## Not applicable (Claude-only)
 
-- Anthropic provider catalog, API proxy translation, effort/context/fast tiers (`SelectsEffort`, `SelectsContextSize`, `SelectsFast`).
+- Anthropic provider catalog and API proxy translation. Cursor effort / context / fast / thinking are ACP config options, not Claude's tiers.
 - Claude `stream-json` control channel, SDK tools, goals (`/goal`), haiku sidecar, Claude settings file sync.
 - `CLAUDE.md` / Claude plugin marketplace as first-class kernel features (IDE may still read project files).
 - Commit attribution modes tied to Claude Code CLI behavior (settings still say Claude-only where enforced).
@@ -91,5 +91,7 @@ References:
 
 1. `agent login`, then in the project folder run `agent` and send a message so `~/.cursor/chats/<hash>/<id>/meta.json` (or `~/.cursor/acp-sessions/<id>/`) exists. `cwd` in that file should be the folder you will open.
 2. Open that folder in BaoCursor. The sidebar lists that CLI chat next to BaoCursor chats. The top-right editor chip reads **BaoCursor**.
-3. Open the CLI chat. If this `agent` build advertises `loadSession`, the transcript replays via `session/load`. If it does not, the chat still opens and a notice says the history stays in the CLI store and this is a new session.
-4. The composer shows a model pill beside Agent / Plan / Ask. With ACP `configOptions` category `model`, the menu is that list and a pick sends `session/set_config_option`. Otherwise it lists **CLI default**, the current id, recent ids, and **Other model…**. Picking another id asks to restart, then the process is `agent --model <id> acp`. Settings → General → Cursor Agent → Model matches the last pick.
+3. Open the CLI chat. If this `agent` build advertises `loadSession` and the id is an ACP session, the transcript replays via `session/load`. If load returns invalid params or the process exits, the chat stays usable: the empty state says the history stays in the CLI store, and a new message starts a new session. There is no red error that blocks the composer.
+4. The composer shows a model pill beside Agent / Plan / Ask. With ACP `configOptions`, the menu is bare model ids, and effort / context / fast / thinking (when the CLI lists them) are rows in that menu. A pick sends `session/set_config_option`. The pill does not show `id[context=…]`, and the process does not exit with `Cannot use this model`. Otherwise the menu lists **CLI default**, the current id, recent ids, and **Other model…**. Picking a plain id asks to restart, then the process is `agent --model <id> acp`.
+5. New Chat (sidebar and the shortcut) opens a new window when the app can create windows.
+6. The sidebar section **Folders in this workspace** lists each folder path in the current workspace (multi-root folders and `--add-dir` roots), plus the named workspace when one is set. It is not only the chat group's title.

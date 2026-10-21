@@ -201,6 +201,7 @@ class AgentThread {
     effort: _session?.selected(KernelChoiceKind.effort),
     context: _session?.selected(KernelChoiceKind.context),
     fast: _session?.selected(KernelChoiceKind.fast),
+    thinking: _session?.selected(KernelChoiceKind.thinking),
   );
 }
 
@@ -216,6 +217,7 @@ typedef _Snapshot = ({
   String? effort,
   String? context,
   String? fast,
+  String? thinking,
 });
 
 /// Projects and their agents. Any number of agents may run at once; the
@@ -1132,8 +1134,71 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     cursorAgentExtraDirectories = dirs;
   }
 
-  ResolvedCursorAgentWorkspace cursorAgentWorkspaceFor(AgentThread thread) =>
-      resolveCursorAgentWorkspace(thread.session.kernelContext);
+  /// What Cursor Agent is using for [thread], including workspace folders
+  /// and extra directories changed after the thread was opened.
+  ///
+  /// The kernel context copies settings once, when the thread is created.
+  /// The composer edits the live preferences, so the sidebar reads those.
+  ResolvedCursorAgentWorkspace cursorAgentWorkspaceFor(AgentThread thread) {
+    final context = thread.session.kernelContext;
+    final settings = Map<String, String>.from(context.settings);
+    final named = cursorAgentNamedWorkspace?.trim() ?? '';
+    if (named.isEmpty) {
+      settings.remove(CursorAgentWorkspaceSetting.workspaceKey);
+    } else {
+      settings[CursorAgentWorkspaceSetting.workspaceKey] = named;
+    }
+    final extras = cursorAgentExtraDirectories;
+    if (extras.isEmpty) {
+      settings.remove(CursorAgentWorkspaceSetting.extraDirsKey);
+    } else {
+      settings[CursorAgentWorkspaceSetting.extraDirsKey] =
+          CursorAgentWorkspaceSetting.encodeExtraDirectories(extras);
+    }
+    final multi = workspaceOf(thread.project);
+    return resolveCursorAgentWorkspace(
+      KernelContext(
+        cwd: context.cwd ?? thread.project.path,
+        settings: settings,
+        workspace: () {
+          final live = context.workspace?.call();
+          return KernelWorkspace(
+            folders: [...?live?.folders, ...?multi?.folders],
+            instructions: live?.instructions ?? '',
+          );
+        },
+      ),
+    );
+  }
+
+  /// Folders in [thread]'s current workspace: multi-root folders, extra
+  /// `--add-dir` roots, and the project folder. The workspace file's own
+  /// stub directory is not a folder the user added.
+  List<String> cursorAgentFoldersFor(AgentThread thread) {
+    final resolved = cursorAgentWorkspaceFor(thread);
+    final multi = workspaceOf(thread.project);
+    final seen = <String>{};
+    final folders = <String>[];
+    void add(String path) {
+      if (path.isEmpty) return;
+      if (multi != null && p.equals(path, multi.path)) return;
+      if (seen.add(p.normalize(path))) folders.add(path);
+    }
+
+    if (multi != null) {
+      for (final folder in multi.folders) {
+        add(folder);
+      }
+    }
+    for (final root in resolved.displayRoots) {
+      add(root);
+    }
+    for (final extra in cursorAgentExtraDirectories) {
+      add(extra);
+    }
+    if (folders.isEmpty) add(thread.project.path);
+    return folders;
+  }
 
   /// Language servers the Fast Ide is not to recommend installing again.
   Set<String> get ignoredServerRecommendations =>
@@ -2240,6 +2305,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
         (KernelChoiceKind.effort, snapshot.effort),
         (KernelChoiceKind.context, snapshot.context),
         (KernelChoiceKind.fast, snapshot.fast),
+        (KernelChoiceKind.thinking, snapshot.thinking),
       ])
         kind.name: ?value,
       for (final entry
@@ -2338,11 +2404,13 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
       remember(KernelChoiceKind.model, before.model, snapshot.model);
       remember(KernelChoiceKind.effort, before.effort, snapshot.effort);
       remember(KernelChoiceKind.context, before.context, snapshot.context);
+      remember(KernelChoiceKind.thinking, before.thinking, snapshot.thinking);
       // And each model's own, for it to go back to (see modelSettingKey).
       if (snapshot.model case final model?) {
         for (final (kind, value) in [
           (KernelChoiceKind.effort, snapshot.effort),
           (KernelChoiceKind.context, snapshot.context),
+          (KernelChoiceKind.thinking, snapshot.thinking),
         ]) {
           final key = modelSettingKey(kind, model);
           if (value != null && _settings[key] != value) {
