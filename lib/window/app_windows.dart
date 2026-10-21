@@ -868,13 +868,32 @@ class AppWindows extends ChangeNotifier implements WindowHostEvents {
     return window == null ? null : thread;
   }
 
-  /// Opens a window of [thread]'s own, [agentWidth] wide.
-  Future<AppWindow?> _createAgent(AgentThread thread) async {
+  /// New Chat: a new agent in [folder], in a new window of the usual size.
+  ///
+  /// Null when this host has not started windows; the caller then stays in
+  /// the current window. Explorer's Open with BaoCursor stays the narrow
+  /// [openAgent] window.
+  Future<AgentThread?> openNewChat(String folder) async {
+    if (!_started || folder.isEmpty) return null;
+    final thread = workspace.newWindowAgent(folder);
+    final window = await _serial(() => _createAgent(thread, chatSized: true));
+    if (window == null) workspace.closeWindowAgent(thread);
+    return window == null ? null : thread;
+  }
+
+  /// Opens a window of [thread]'s own. [chatSized] uses the new-window
+  /// frame; otherwise the window is [agentWidth] wide.
+  Future<AppWindow?> _createAgent(
+    AgentThread thread, {
+    bool chatSized = false,
+  }) async {
     final l10n = _l10n();
     final pending = AppWindow._(AppWindowKind.agent, -1, null, thread: thread);
+    final frame = chatSized ? await _newFrame() : null;
     final viewId = await host.create(
       title: pending.title(l10n),
-      width: agentWidth,
+      width: chatSized ? null : agentWidth,
+      frame: frame,
     );
     if (viewId == null) return null;
     if (await host.waitForView(viewId) == null) {
@@ -886,6 +905,7 @@ class AppWindows extends ChangeNotifier implements WindowHostEvents {
       viewId,
       null,
       thread: thread,
+      frame: frame,
     );
     _agents.add(created);
     _mru.insert(0, created);

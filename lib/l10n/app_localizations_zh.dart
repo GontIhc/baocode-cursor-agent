@@ -2674,6 +2674,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get composerSettingEffort => '推理强度';
 
   @override
+  String get composerSettingThinking => '思考';
+
+  @override
   String get composerNoResults => '无结果';
 
   @override
@@ -5606,6 +5609,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cursorAgentWorkspaceExtraDirsEmpty => '无额外根目录。始终包含主项目文件夹。';
+
+  @override
+  String get cursorWorkspaceFoldersTitle => '当前工作区的文件夹';
+
+  @override
+  String cursorWorkspaceFoldersNamed(String name) {
+    return '命名工作区：$name';
+  }
 
   @override
   String get cursorAgentWorkspaceAddRoot => '添加文件夹';

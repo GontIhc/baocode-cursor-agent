@@ -83,10 +83,11 @@ class ResolvedCursorAgentWorkspace {
   bool get usesCliWorkspaceFlags =>
       usesNamedWorkspace || cliAddDirectories.isNotEmpty;
 
-  List<String> get processArguments => CursorAgentWorkspaceSetting.processArguments(
-    namedWorkspace: namedWorkspace,
-    addDirectories: cliAddDirectories,
-  );
+  List<String> get processArguments =>
+      CursorAgentWorkspaceSetting.processArguments(
+        namedWorkspace: namedWorkspace,
+        addDirectories: cliAddDirectories,
+      );
 
   /// Roots shown in the UI: primary first, then extras (named workspace
   /// still lists configured folders for context).
@@ -102,7 +103,9 @@ class ResolvedCursorAgentWorkspace {
   }
 }
 
-ResolvedCursorAgentWorkspace resolveCursorAgentWorkspace(KernelContext context) {
+ResolvedCursorAgentWorkspace resolveCursorAgentWorkspace(
+  KernelContext context,
+) {
   final cwd = context.cwd ?? '';
   final settings = context.settings;
   final named = settings[CursorAgentWorkspaceSetting.workspaceKey]?.trim();
@@ -116,13 +119,15 @@ ResolvedCursorAgentWorkspace resolveCursorAgentWorkspace(KernelContext context) 
     if (path.isEmpty) return;
     if (seen.add(p.normalize(path))) extras.add(path);
   }
+
   for (final directory in configured) {
     add(directory);
   }
-  if (named == null || named.isEmpty) {
-    for (final folder in workspaceFolders) {
-      add(folder);
-    }
+  // Folders are always listed. A named workspace still launches with
+  // `--workspace` only (`cliAddDirectories` stays empty); the folders are
+  // what the sidebar shows inside that workspace.
+  for (final folder in workspaceFolders) {
+    add(folder);
   }
   return ResolvedCursorAgentWorkspace(
     namedWorkspace: named?.isEmpty == true ? null : named,

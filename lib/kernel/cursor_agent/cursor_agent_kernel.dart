@@ -39,7 +39,11 @@ class CursorAgentKernel
         SelectsMode,
         SelectsModel,
         ConfirmsModelSwitch,
-        ReportsUnloadedHistory {
+        ReportsUnloadedHistory,
+        SelectsEffort,
+        SelectsContextSize,
+        SelectsFast,
+        SelectsThinking {
   CursorAgentKernel(this.descriptor, this._context, {CursorAgentStarter? start})
     : _start = start ?? startCursorAgent {
     mode = LocalChoice([...modes], onChanged: _modeChanged);
@@ -54,6 +58,10 @@ class CursorAgentKernel
         if (_cursorModelId(id) != null) id,
     ];
     model = _CursorModelChoice(this);
+    effort = _CursorParameter(this, KernelChoiceKind.effort);
+    contextSize = _CursorParameter(this, KernelChoiceKind.context);
+    fast = _CursorParameter(this, KernelChoiceKind.fast);
+    thinking = _CursorParameter(this, KernelChoiceKind.thinking);
     _translator = CursorAgentTranslator(
       emit: emit,
       nextSeq: () => nextSeq,
@@ -99,8 +107,26 @@ class CursorAgentKernel
   @override
   late final KernelChoiceSource model;
 
+  @override
+  late final ModelSetting effort;
+
+  @override
+  late final ModelSetting contextSize;
+
+  @override
+  late final ModelSetting fast;
+
+  @override
+  late final ModelSetting thinking;
+
   /// The id in the picker. Empty is the CLI default (no `--model`).
+  /// Bracket forms (`id[context=…]`) stay here only as an ACP option value;
+  /// they are never passed to `--model`.
   String _selectedModel = CursorAgentModels.cliDefaultId;
+
+  /// Parameters parsed out of a stored `id[context=…]` value, applied with
+  /// `session/set_config_option` after the session exists.
+  CursorModelSpec? _savedSpec;
 
   /// True after the user picks a model. A resumed CLI chat keeps the
   /// model it was stored with until then.
@@ -111,7 +137,25 @@ class CursorAgentKernel
   /// Set when ACP advertises a model `select` option. Picks then go
   /// through `session/set_config_option` instead of a process restart.
   String? _acpModelConfigId;
+  String? _acpModelCurrent;
   List<KernelOption>? _acpModelOptions;
+
+  /// Effort, context, fast, and thinking, when ACP advertises them.
+  final Map<KernelChoiceKind, CursorAcpParameter> _parameters = {};
+  final Map<KernelChoiceKind, String> _parameterPicked = {};
+  final Set<KernelChoiceKind> _parametersSeeded = {};
+
+  /// True while a `session/set_config_option` round-trip is being applied,
+  /// so the config it returns does not start another one.
+  bool _applyingParameters = false;
+
+  /// True after the automatic apply for this process. [restart] clears it
+  /// so the next session is configured again.
+  bool _parametersApplied = false;
+
+  /// The user picked a parameter. A resumed CLI chat is left as stored
+  /// until then.
+  bool _parametersTouched = false;
 
   late final CursorAgentTranslator _translator;
 
@@ -131,6 +175,14 @@ class CursorAgentKernel
   String? _sessionId;
   bool _loadSession = false;
   bool _additionalDirectories = false;
+
+  /// `session/load` is in flight. If the process exits then, the boot
+  /// starts a new session instead of failing the chat.
+  bool _loadingSession = false;
+
+  /// A resume was abandoned (invalid params, or the process exited on
+  /// load). The next boot does not call `session/load` again.
+  bool _resumeAbandoned = false;
 
   /// The mode the agent last confirmed, so a repeat pick is not sent.
   String? _agentMode;
@@ -171,6 +223,7 @@ class CursorAgentKernel
   void restart() {
     final turn = _turn;
     _shutdown(keepSession: _sessionId != null);
+    _parametersApplied = false;
     if (turn != null) _endTurn(turn, interrupted: true);
     _health = KernelHealth.idle;
     emitInfoChanged();
@@ -327,6 +380,10 @@ class CursorAgentKernel
         'clientCapabilities': {
           'fs': {'readTextFile': false, 'writeTextFile': false},
           'terminal': false,
+          // Base model ids plus separate effort / context / fast / thinking
+          // options. Without this, ACP returns one exploded id
+          // (`model[context=…,effort=…,fast=…]`) and `--model` rejects it.
+          '_meta': {'parameterizedModelPicker': true},
         },
         'clientInfo': const {'name': 'baocursor', 'version': '1.5.0'},
       }, timeout: const Duration(seconds: 20));
@@ -345,6 +402,10 @@ class CursorAgentKernel
       if (_disposed || epoch != _epoch) throw const _BootCancelled();
       _setHealth(KernelHealth.ready);
       await _applyMode(mode.selected);
+    } on _ResumeAbandoned {
+      // The process died during session/load. _onExit already started a
+      // boot that does not resume.
+      return;
     } on _BootCancelled {
       rethrow;
     } on Object catch (error) {
@@ -361,9 +422,13 @@ class CursorAgentKernel
   }
 
   Future<void> _openSession() async {
-    final resume = _sessionId ?? _context.resume?.id;
+    final resume = _resumeAbandoned
+        ? null
+        : (_sessionId ?? _context.resume?.id);
     final wanted = resume != null && resume.isNotEmpty;
-    historyUnavailable = false;
+    // A failed resume keeps the honest empty state. Clearing the flag
+    // here would hide it before the new session exists.
+    if (!_resumeAbandoned) historyUnavailable = false;
     _translator.replayedTranscript = false;
     final params = <String, Object?>{
       'cwd': _transport!.cwd,
@@ -380,22 +445,31 @@ class CursorAgentKernel
     }
     if (wanted && _loadSession) {
       _sessionId = resume;
+      _loadingSession = true;
       _translator.replaying = true;
       try {
+        // Load takes the session id, cwd, and an empty MCP list. Extra
+        // directories belong on session/new; sending them here is what
+        // some agents reject as invalid params.
         final loaded = await _request(CursorAcp.sessionLoad, {
-          ...params,
           'sessionId': resume,
+          'cwd': _transport!.cwd,
+          'mcpServers': const <Object?>[],
         }, timeout: const Duration(seconds: 30));
         _noteModes(loaded);
         _noteConfig(loaded['configOptions'] ?? loaded);
         // Load can succeed and still replay nothing. The chat must say so
         // instead of looking blank.
         historyUnavailable = !_translator.replayedTranscript;
+        await _applySavedParameters();
         return;
       } on CursorAgentRpcException {
+        // -32602 invalid params / session not found: the id is a CLI chat
+        // that this ACP process cannot resume. Keep the new session.
         _sessionId = null;
         historyUnavailable = true;
       } finally {
+        _loadingSession = false;
         _translator.replaying = false;
       }
     } else if (wanted && !_loadSession) {
@@ -418,6 +492,8 @@ class CursorAgentKernel
     _sessionId = id;
     _noteModes(created);
     _noteConfig(created['configOptions'] ?? created);
+    if (_resumeAbandoned) historyUnavailable = true;
+    await _applySavedParameters();
   }
 
   void _readCapabilities(Map<String, Object?> result) {
@@ -474,23 +550,69 @@ class CursorAgentKernel
 
   /// ACP `configOptions` from `session/new`, `session/load`, or
   /// `config_option_update`. Replaces the fallback menu when a model
-  /// selector is present.
+  /// selector is present, and records effort / context / fast / thinking.
+  ///
+  /// The ACP current model is adopted only when the user has not picked
+  /// one. A stored bare id is matched onto the advertised option. Exploded
+  /// values keep their raw id (so `set_config_option` can send it) and a
+  /// bare label.
   void _noteConfig(Object? raw) {
-    final parsed = parseCursorAcpModels(raw);
-    if (parsed == null) return;
-    _acpModelConfigId = parsed.configId;
-    final options = [...parsed.options];
-    final current = parsed.currentValue;
-    if (current != null && !options.any((option) => option.id == current)) {
-      options.insert(
-        0,
-        KernelOption(current, current, Icons.auto_awesome_outlined, ''),
-      );
+    final config = parseCursorAcpConfig(raw);
+    if (config == null) return;
+    if (config.model case final parsed?) {
+      _acpModelConfigId = parsed.configId;
+      _acpModelCurrent = parsed.currentValue;
+      final options = [
+        for (final option in parsed.options) _shownModelOption(option),
+      ];
+      final current = parsed.currentValue;
+      if (current != null && !options.any((option) => option.id == current)) {
+        options.insert(
+          0,
+          _shownModelOption(
+            KernelOption(current, current, Icons.auto_awesome_outlined, ''),
+          ),
+        );
+      }
+      _acpModelOptions = options;
+      final holdsResume =
+          _context.resume != null && !_modelTouched && !_resumeAbandoned;
+      if (holdsResume) {
+        if (current != null) _selectedModel = current;
+      } else if (_selectedModel == CursorAgentModels.cliDefaultId) {
+        if (current != null) _selectedModel = current;
+      } else {
+        final match = matchCursorModelOption(_selectedModel, options);
+        if (match != null) _selectedModel = match.id;
+      }
     }
-    _acpModelOptions = options;
-    if (current != null) _selectedModel = current;
+    for (final param in config.parameters) {
+      _parameters[param.kind] = param;
+      if (!_parametersSeeded.add(param.kind)) continue;
+      final holdsResume =
+          _context.resume != null && !_parametersTouched && !_resumeAbandoned;
+      if (holdsResume) {
+        final current = param.currentValue;
+        if (current != null) _parameterPicked[param.kind] = current;
+        continue;
+      }
+      final saved = _savedParameter(param.kind);
+      if (saved != null && _parameterAccepts(param, saved)) {
+        _parameterPicked[param.kind] = saved;
+      } else if (param.currentValue != null) {
+        _parameterPicked[param.kind] = param.currentValue!;
+      }
+    }
     emitInfoChanged();
   }
+
+  KernelOption _shownModelOption(KernelOption option) => KernelOption(
+    option.id,
+    cursorModelOptionLabel(option.id, option.label),
+    option.icon,
+    option.description,
+    group: option.group,
+  );
 
   List<KernelOption> get _modelOptions =>
       _acpModelOptions ??
@@ -533,13 +655,15 @@ class CursorAgentKernel
       return;
     }
     try {
-      final result = await _request(CursorAcp.sessionSetConfigOption, {
-        'sessionId': session,
-        'configId': configId,
-        'value': id,
-      }, timeout: const Duration(seconds: 15));
-      _noteConfig(result['configOptions'] ?? result);
+      await _setConfig(configId, id);
+      await _pushParameters();
     } on CursorAgentRpcException catch (error) {
+      if (id.contains('[')) {
+        _notice(
+          'Could not switch the model in this session (${error.message}).',
+        );
+        return;
+      }
       _notice(
         'Could not switch the model in this session (${error.message}). '
         'Restarting with --model $id.',
@@ -548,37 +672,176 @@ class CursorAgentKernel
     }
   }
 
+  /// Aligns a new session with the model and parameters the user already
+  /// picked. A resumed CLI chat is left as the CLI stored it.
+  Future<void> _applySavedParameters() async {
+    if (_parametersApplied || _applyingParameters) return;
+    if (_sessionId == null) return;
+    _parametersApplied = true;
+    final holdsResume =
+        _context.resume != null && !_modelTouched && !_resumeAbandoned;
+    if (holdsResume) return;
+    _applyingParameters = true;
+    try {
+      final configId = _acpModelConfigId;
+      final options = _acpModelOptions;
+      if (configId != null &&
+          options != null &&
+          _selectedModel != CursorAgentModels.cliDefaultId) {
+        final match = matchCursorModelOption(_selectedModel, options);
+        if (match != null && match.id != _acpModelCurrent) {
+          await _setConfig(configId, match.id);
+        }
+      }
+      await _pushParameters();
+    } on CursorAgentRpcException {
+      // The session is up. A parameter the CLI rejected stays at its
+      // current value; the chat is still usable.
+    } finally {
+      _applyingParameters = false;
+    }
+  }
+
+  /// Sends picked parameters that differ from the ACP current value.
+  Future<void> _pushParameters() async {
+    if (_applyingParameters) {
+      await _pushParametersBody();
+      return;
+    }
+    _applyingParameters = true;
+    try {
+      await _pushParametersBody();
+    } on CursorAgentRpcException {
+      // Kept locally. The next config update shows what the CLI kept.
+    } finally {
+      _applyingParameters = false;
+    }
+  }
+
+  Future<void> _pushParametersBody() async {
+    for (final kind in const [
+      KernelChoiceKind.context,
+      KernelChoiceKind.effort,
+      KernelChoiceKind.thinking,
+      KernelChoiceKind.fast,
+    ]) {
+      final param = _parameters[kind];
+      final wanted = _parameterPicked[kind];
+      if (param == null || wanted == null || wanted.isEmpty) continue;
+      if (wanted == param.currentValue) continue;
+      if (!_parameterAccepts(param, wanted)) continue;
+      await _setConfig(param.configId, wanted);
+    }
+  }
+
+  Future<void> _setConfig(String configId, String value) async {
+    final session = _sessionId;
+    if (session == null) return;
+    final result = await _request(CursorAcp.sessionSetConfigOption, {
+      'sessionId': session,
+      'configId': configId,
+      'value': value,
+    }, timeout: const Duration(seconds: 15));
+    _noteConfig(result['configOptions'] ?? result);
+  }
+
+  void _pickParameter(KernelChoiceKind kind, String model, String id) {
+    final param = _parameters[kind];
+    if (param == null) return;
+    var value = id;
+    if (param.toggle) {
+      value = _parameterSelected(kind) == 'true' ? 'false' : 'true';
+    }
+    _parameterPicked[kind] = value;
+    _parametersTouched = true;
+    _parametersSeeded.add(kind);
+    emitInfoChanged();
+    final bare = cursorBareModelId(_selectedModel);
+    final switchModel =
+        model.isNotEmpty && model != _selectedModel && model != bare;
+    if (switchModel) {
+      _pickModel(model);
+      // A restart applies the pick when the next session comes up.
+      // An ACP model change pushes parameters after the model is set.
+      return;
+    }
+    unawaited(_setConfig(param.configId, value));
+  }
+
+  String? _parameterSelected(KernelChoiceKind kind) {
+    final picked = _parameterPicked[kind];
+    if (picked != null && picked.isNotEmpty) return picked;
+    return _parameters[kind]?.currentValue;
+  }
+
+  String? _savedParameter(KernelChoiceKind kind) {
+    final bare = cursorBareModelId(_selectedModel);
+    final perModel = bare == null || bare.isEmpty
+        ? null
+        : _context.settings[modelSettingKey(kind, bare)];
+    final global = _context.settings[kind.name];
+    final fromSpec = switch (kind) {
+      KernelChoiceKind.context => _savedSpec?.context,
+      KernelChoiceKind.effort => _savedSpec?.effort,
+      KernelChoiceKind.fast => switch (_savedSpec?.fast) {
+        true => 'true',
+        false => 'false',
+        null => null,
+      },
+      KernelChoiceKind.thinking => _savedSpec?.thinking,
+      _ => null,
+    };
+    return perModel ?? global ?? fromSpec;
+  }
+
+  bool _parameterAccepts(CursorAcpParameter param, String value) {
+    if (param.toggle) return value == 'true' || value == 'false';
+    return param.options.any((option) => option.id == value);
+  }
+
   String _initialModelId() {
-    final picked = _context.settings[KernelChoiceKind.model.name];
-    final fromChat = _cursorModelId(picked);
-    if (fromChat != null) return fromChat;
-    return CursorAgentModelSetting.current() ??
-        CursorAgentModelSetting.parse(
-          _context.settings[CursorAgentModelSetting.settingKey],
-        ) ??
-        CursorAgentModels.cliDefaultId;
+    final candidates = [
+      _context.settings[KernelChoiceKind.model.name],
+      CursorAgentModelSetting.current(),
+      CursorAgentModelSetting.parse(
+        _context.settings[CursorAgentModelSetting.settingKey],
+      ),
+    ];
+    for (final candidate in candidates) {
+      final spec = parseCursorModelSpec(candidate);
+      if (spec == null || parseModelRef(spec.bareId) != null) continue;
+      if (spec.hasParams) _savedSpec = spec;
+      return spec.bareId;
+    }
+    return CursorAgentModels.cliDefaultId;
   }
 
   /// A Cursor model id. Claude provider refs (`@provider/model`) are not
-  /// passed through as `--model`.
+  /// passed through as `--model`. Bracket suffixes are stripped; the bare
+  /// id is what `--model` can accept.
   String? _cursorModelId(String? id) {
-    if (id == null) return null;
-    final trimmed = id.trim();
-    if (trimmed.isEmpty || trimmed == CursorAgentModels.otherId) return null;
-    if (parseModelRef(trimmed) != null) return null;
-    return trimmed;
+    final bare = cursorBareModelId(id);
+    if (bare == null || parseModelRef(bare) != null) return null;
+    return bare;
   }
 
   /// `--model` for the next process. A resumed chat omits it until the
   /// user picks, so the CLI session keeps the model it was stored with.
+  /// An id that carries parameters is not a CLI model id: those go through
+  /// `session/set_config_option` after the session exists.
   String? _modelForLaunch() {
     if (_context.resume != null && !_modelTouched) return null;
     if (_selectedModel == CursorAgentModels.cliDefaultId) return null;
+    if (_selectedModel.contains('[')) return null;
+    if (_savedSpec?.hasParams == true && !_modelTouched) return null;
     return _cursorModelId(_selectedModel);
   }
 
   void _rememberModel(String id) {
-    final model = id == CursorAgentModels.cliDefaultId ? null : id;
+    final bare = id == CursorAgentModels.cliDefaultId
+        ? null
+        : _cursorModelId(id);
+    final model = bare;
     if (model != null) {
       _recentModels = [
         model,
@@ -955,6 +1218,35 @@ class CursorAgentKernel
     _sawExit = true;
     final stderr = params['stderr'];
     if (stderr is String) _stderr = stderr;
+    // session/load with a CLI chat id often makes this process exit
+    // (invalid params / session not found). Finish the waiting call and
+    // boot again without that id so the chat stays usable.
+    if (_booting != null &&
+        _turn == null &&
+        _loadingSession &&
+        !_resumeAbandoned &&
+        !_disposed) {
+      _resumeAbandoned = true;
+      historyUnavailable = true;
+      _sessionId = null;
+      _loadingSession = false;
+      _epoch++;
+      for (final waiting in _responses.values) {
+        if (!waiting.isCompleted) {
+          waiting.completeError(const _ResumeAbandoned());
+        }
+      }
+      _responses.clear();
+      final dead = _transport;
+      unawaited(_subscription?.cancel());
+      _subscription = null;
+      _transport = null;
+      _booting = null;
+      _parametersApplied = false;
+      dead?.close();
+      prepare();
+      return;
+    }
     if (_turn != null) {
       _notice('Cursor Agent stopped');
       _endTurn(_turn!, interrupted: true);
@@ -1069,6 +1361,12 @@ final class _BootCancelled implements Exception {
   const _BootCancelled();
 }
 
+/// `session/load` died with the process. The replacement boot does not
+/// resume that id.
+final class _ResumeAbandoned implements Exception {
+  const _ResumeAbandoned();
+}
+
 /// ACP `authenticate` failed. The user needs `agent login`; an API key
 /// alone does not satisfy that call.
 final class CursorAgentAuthRequired implements Exception {
@@ -1093,4 +1391,30 @@ final class _CursorModelChoice implements KernelChoiceSource {
 
   @override
   void select(String id) => _kernel._pickModel(id);
+}
+
+/// Effort, context, fast, or thinking advertised as an ACP config option.
+final class _CursorParameter implements ModelSetting {
+  _CursorParameter(this._kernel, this.kind);
+
+  final CursorAgentKernel _kernel;
+  final KernelChoiceKind kind;
+
+  CursorAcpParameter? get _param => _kernel._parameters[kind];
+
+  @override
+  bool get toggle => _param?.toggle ?? false;
+
+  @override
+  List<KernelOption> optionsFor(String model) => _param?.options ?? const [];
+
+  @override
+  String? get selected => _kernel._parameterSelected(kind);
+
+  @override
+  String? selectedFor(String model) => selected;
+
+  @override
+  void select(String model, String id) =>
+      _kernel._pickParameter(kind, model, id);
 }

@@ -26,13 +26,8 @@ void main() {
     final resolved = resolveCursorAgentWorkspace(
       KernelContext(
         cwd: '/work',
-        settings: {
-          CursorAgentWorkspaceSetting.extraDirsKey:
-              '["/configured"]',
-        },
-        workspace: () => const KernelWorkspace(
-          folders: ['/work', '/also'],
-        ),
+        settings: {CursorAgentWorkspaceSetting.extraDirsKey: '["/configured"]'},
+        workspace: () => const KernelWorkspace(folders: ['/work', '/also']),
       ),
     );
     expect(resolved.usesNamedWorkspace, isFalse);
@@ -46,7 +41,7 @@ void main() {
     ]);
   });
 
-  test('named workspace skips add-dir and folder merge', () {
+  test('named workspace skips add-dir and still lists folders', () {
     final resolved = resolveCursorAgentWorkspace(
       KernelContext(
         cwd: '/work',
@@ -57,5 +52,6 @@ void main() {
     expect(resolved.usesNamedWorkspace, isTrue);
     expect(resolved.cliAddDirectories, isEmpty);
     expect(resolved.processArguments, ['--workspace', 'saved', 'acp']);
+    expect(resolved.displayRoots, ['/work', '/also']);
   });
 }

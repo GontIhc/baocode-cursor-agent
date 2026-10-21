@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:baocode/kernel/agent_kernel.dart';
 import 'package:baocode/kernel/cursor_agent/cursor_agent_models.dart';
 import 'package:baocode/kernel/cursor_agent/cursor_agent_sessions_io.dart';
+import 'package:baocode/kernel/kernel_types.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -44,6 +46,128 @@ void main() {
       'gpt-5',
     ]);
     expect(parsed.options.last.description, 'A larger model');
+  });
+
+  test('bracket model ids split into a bare id and parameters', () {
+    final spec = parseCursorModelSpec(
+      'claude-opus-5-5[context=300k,effort=medium,fast=false]',
+    );
+    expect(spec, isNotNull);
+    expect(spec!.bareId, 'claude-opus-5-5');
+    expect(spec.context, '300k');
+    expect(spec.effort, 'medium');
+    expect(spec.fast, isFalse);
+    expect(spec.hasParams, isTrue);
+    expect(cursorBareModelId('composer-2.5'), 'composer-2.5');
+    expect(
+      cursorModelOptionLabel(
+        'claude-opus-5-5[context=300k,effort=medium,fast=false]',
+        'claude-opus-5-5[context=300k,effort=medium,fast=false]',
+      ),
+      'claude-opus-5-5',
+    );
+  });
+
+  test('model match is exact, then the longest hyphen prefix', () {
+    final options = [
+      const KernelOption(
+        'claude-opus-5',
+        'Opus',
+        Icons.auto_awesome_outlined,
+        '',
+      ),
+      const KernelOption(
+        'claude-opus-5-thinking-high',
+        'Opus thinking',
+        Icons.auto_awesome_outlined,
+        '',
+      ),
+      const KernelOption('gpt-5', 'GPT-5', Icons.auto_awesome_outlined, ''),
+    ];
+    expect(
+      matchCursorModelOption('claude-opus-5-5', options)?.id,
+      'claude-opus-5',
+    );
+    expect(
+      matchCursorModelOption('claude-opus-5-thinking-high', options)?.id,
+      'claude-opus-5-thinking-high',
+    );
+    expect(matchCursorModelOption('gpt-5.3-codex', options), isNull);
+  });
+
+  test('ACP config options include effort, context, fast, and thinking', () {
+    final parsed = parseCursorAcpConfig({
+      'configOptions': [
+        {
+          'id': 'model',
+          'category': 'model',
+          'type': 'select',
+          'currentValue': 'claude-opus-5',
+          'options': [
+            {'value': 'claude-opus-5', 'name': 'Opus'},
+          ],
+        },
+        {
+          'id': 'reasoning',
+          'type': 'select',
+          'currentValue': 'low',
+          'options': [
+            {'value': 'low', 'name': 'Low'},
+            {'value': 'high', 'name': 'High'},
+          ],
+        },
+        {
+          'id': 'effort',
+          'category': 'effort',
+          'type': 'select',
+          'currentValue': 'medium',
+          'options': [
+            {'value': 'medium', 'name': 'Medium'},
+            {'value': 'high', 'name': 'High'},
+          ],
+        },
+        {
+          'id': 'context',
+          'type': 'select',
+          'currentValue': '200k',
+          'options': [
+            {'value': '200k', 'name': '200k'},
+            {'value': '300k', 'name': '300k'},
+          ],
+        },
+        {
+          'id': 'fast',
+          'type': 'boolean',
+          'name': 'Fast',
+          'currentValue': false,
+        },
+        {
+          'id': 'thinking',
+          'type': 'boolean',
+          'name': 'Thinking',
+          'currentValue': true,
+        },
+      ],
+    });
+    expect(parsed, isNotNull);
+    expect(parsed!.model!.currentValue, 'claude-opus-5');
+    expect(parsed.parameters.map((param) => param.kind), [
+      KernelChoiceKind.context,
+      KernelChoiceKind.effort,
+      KernelChoiceKind.thinking,
+      KernelChoiceKind.fast,
+    ]);
+    final effort = parsed.parameters.firstWhere(
+      (param) => param.kind == KernelChoiceKind.effort,
+    );
+    expect(effort.configId, 'effort');
+    expect(effort.currentValue, 'medium');
+    final fast = parsed.parameters.firstWhere(
+      (param) => param.kind == KernelChoiceKind.fast,
+    );
+    expect(fast.toggle, isTrue);
+    expect(fast.options.single.id, 'true');
+    expect(fast.currentValue, 'false');
   });
 
   test('fallback menu is default, current, recent, and free text', () {
