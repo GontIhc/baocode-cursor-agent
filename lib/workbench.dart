@@ -1097,17 +1097,22 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     _openAgent(panes[((at < 0 ? 0 : at) + step) % panes.length]);
   }
 
+  /// A fresh chat in this window, in the current workspace.
+  ///
+  /// The sidebar's New Chat, its shortcut, and the File menu all come
+  /// here. The chat area is replaced with an empty session that keeps
+  /// the same project and Cursor workspace folders. This does not open
+  /// an OS window; File → New Window does that. An agent's own window
+  /// (Explorer's Open with BaoCursor) replaces the session it is showing.
   void _newAgent([Project? project]) {
     _closeDrawer();
     _closeCustomize();
-    final windows = _windows;
-    final folder = project?.path ?? _workspace.current?.project.path;
-    if (windows != null &&
-        windows.started &&
-        folder != null &&
-        folder.isNotEmpty) {
-      unawaited(windows.openNewChat(folder));
-      return;
+    if (_agentWindow) {
+      final folder = (project ?? _agentThread?.project)?.path;
+      if (folder != null && folder.isNotEmpty) {
+        _showInWindow(_workspace.newWindowAgent(folder));
+        return;
+      }
     }
     _focusChat(_workspace.create(project: project));
   }

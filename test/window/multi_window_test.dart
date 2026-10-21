@@ -359,4 +359,92 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump(const Duration(milliseconds: 200));
   });
+
+  _testWindows('New Chat stays in the current window and workspace', (
+    tester,
+  ) async {
+    final (windows, host, workspace) = await _pumpApp(tester);
+    final before = workspace.current!;
+    workspace.cursorAgentNamedWorkspace = 'hammer';
+    workspace.cursorAgentExtraDirectories = const ['/extra/one', '/extra/two'];
+    await tester.pump();
+    final folders = workspace.cursorAgentFoldersFor(before);
+    expect(folders, containsAll(['/extra/one', '/extra/two']));
+    expect(host.created, isEmpty);
+    expect(windows.agentWindows, isEmpty);
+
+    await tester.tap(
+      find.descendant(
+        of: _inView(0, find.byType(Sidebar)),
+        matching: find.text('New Chat'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final created = workspace.current!;
+    expect(created, isNot(same(before)));
+    expect(created.untouched, isTrue);
+    expect(created.project.path, before.project.path);
+    expect(workspace.cursorAgentFoldersFor(created), folders);
+    expect(workspace.cursorAgentNamedWorkspace, 'hammer');
+    expect(windows.agentWindows, isEmpty);
+    expect(host.created, isEmpty);
+    expect(find.byType(Workbench), findsOneWidget);
+    expect(
+      tester.widget<ChatScreen>(_inView(0, find.byType(ChatScreen))).session,
+      same(created.session),
+    );
+
+    // An untouched new chat is reused, still without a window.
+    await tester.tap(
+      find
+          .descendant(
+            of: _inView(0, find.byType(Sidebar)),
+            matching: find.text('New Chat'),
+          )
+          .first,
+    );
+    await tester.pump();
+    expect(workspace.current, same(created));
+    expect(host.created, isEmpty);
+  });
+
+  _testWindows('New Chat in an agent window replaces that window\'s session', (
+    tester,
+  ) async {
+    final (windows, host, workspace) = await _pumpApp(tester);
+    final opening = windows.openAgent(['~/code/baocode']);
+    for (var i = 0; i < 4; i++) {
+      await tester.pump();
+    }
+    final thread = (await opening)!;
+    final window = windows.agentWindows.single;
+    final main = workspace.current!;
+    expect(main, isNot(same(thread)));
+    final createdWindows = host.created.length;
+
+    await tester.tap(
+      find.descendant(
+        of: _inView(window.viewId, find.byType(Sidebar)),
+        matching: find.text('New Chat'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(windows.agentWindows, hasLength(1));
+    expect(host.created, hasLength(createdWindows));
+    expect(window.thread, isNot(same(thread)));
+    expect(window.thread!.untouched, isTrue);
+    expect(window.thread!.project.path, thread.project.path);
+    expect(workspace.current, same(main));
+    expect(
+      tester
+          .widget<ChatScreen>(_inView(window.viewId, find.byType(ChatScreen)))
+          .session,
+      same(window.thread!.session),
+    );
+    expect(workspace.threads, isNot(contains(thread)));
+  });
 }
