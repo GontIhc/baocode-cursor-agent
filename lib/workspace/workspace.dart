@@ -2560,6 +2560,10 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// A line between the panes moved: kept where it is now.
   void keepGridLines() => _save();
 
+  /// A notice arrived while a frame was building, so listeners hear it
+  /// once that frame ends.
+  bool _notifyDeferred = false;
+
   /// Saves the panes whenever they change: an agent opened, split off,
   /// closed or given its id.
   ///
@@ -2567,8 +2571,6 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// layout. Notifying then asks an ancestor to rebuild during build; the
   /// framework drops that rebuild and the sidebar moves on while the editor
   /// stays on the previous session. The notice waits until the frame ends.
-  bool _notifyDeferred = false;
-
   @override
   void notifyListeners() {
     if (SchedulerBinding.instance.schedulerPhase ==

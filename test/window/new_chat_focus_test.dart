@@ -90,6 +90,19 @@ Finder _sidebarText(String text) => find.descendant(
   matching: find.text(text),
 );
 
+/// Row clicks share a double-tap clock, and [WidgetTester.tap] stamps every
+/// pointer event at zero, so a second click on a row renames it. Each tap
+/// here is a second later.
+Duration _tapAt = Duration.zero;
+
+Future<void> _tap(WidgetTester tester, Finder finder) async {
+  _tapAt += const Duration(seconds: 1);
+  final gesture = await tester.createGesture();
+  final position = tester.getCenter(finder);
+  await gesture.down(position, timeStamp: _tapAt);
+  await gesture.up(timeStamp: _tapAt);
+}
+
 ChatScreen _chat(WidgetTester tester) {
   final screens = tester.widgetList<ChatScreen>(find.byType(ChatScreen));
   expect(screens, hasLength(1), reason: 'one chat in the main window');
@@ -169,7 +182,7 @@ void main() {
       );
       expect(cli.record, isNotNull);
 
-      await tester.tap(_sidebarText('Smoke CLI history hello'));
+      await _tap(tester, _sidebarText('Smoke CLI history hello'));
       await tester.pump();
       await tester.pump();
 
@@ -178,7 +191,7 @@ void main() {
       expect(_chat(tester).title, 'Smoke CLI history hello');
       final createdWindows = host.created.length;
 
-      await tester.tap(_sidebarText('New Chat'));
+      await _tap(tester, _sidebarText('New Chat'));
       await tester.pump();
       await tester.pump();
 
@@ -201,12 +214,14 @@ void main() {
 
       // Back on the CLI session, New Chat reuses the untouched one and
       // shows it again. The editor must not stay on the history chat.
-      await tester.tap(_sidebarText('Smoke CLI history hello'));
+      await _tap(tester, _sidebarText('Smoke CLI history hello'));
       await tester.pump();
       await tester.pump();
+      expect(workspace.current, same(cli));
       expect(_chat(tester).session, same(cli.session));
+      expect(_chat(tester).title, 'Smoke CLI history hello');
 
-      await tester.tap(_sidebarText('New Chat').first);
+      await _tap(tester, _sidebarText('New Chat').first);
       await tester.pump();
       await tester.pump();
 
