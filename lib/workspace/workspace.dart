@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:bao_remote/client.dart' show SshServer;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show TextSelection;
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:path/path.dart' as p;
@@ -2559,10 +2560,29 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// A line between the panes moved: kept where it is now.
   void keepGridLines() => _save();
 
+  /// A notice arrived while a frame was building, so listeners hear it
+  /// once that frame ends.
+  bool _notifyDeferred = false;
+
   /// Saves the panes whenever they change: an agent opened, split off,
   /// closed or given its id.
+  ///
+  /// Cursor Agent reports health from [ChatScreen] mount, still inside
+  /// layout. Notifying then asks an ancestor to rebuild during build; the
+  /// framework drops that rebuild and the sidebar moves on while the editor
+  /// stays on the previous session. The notice waits until the frame ends.
   @override
   void notifyListeners() {
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      if (_disposed || _notifyDeferred) return;
+      _notifyDeferred = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _notifyDeferred = false;
+        if (!_disposed) notifyListeners();
+      });
+      return;
+    }
     if (_chatViewRestored && jsonEncode(_chatView) != _chatViewSaved) {
       _save();
     }
