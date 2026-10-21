@@ -28,9 +28,10 @@ class CursorAgentWorkspaceSidebar extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final l10n = context.l10n;
-    // Live preferences, the same ones cursorAgentFoldersFor reads. Resolved
-    // once: this section rebuilds with the rest of the sidebar.
-    final named = workspace.cursorAgentNamedWorkspace?.trim();
+    // This chat's workspace, not the global composer prefs. A new chat
+    // still follows those prefs (see [Workspace.cursorAgentWorkspaceFor]).
+    final resolved = workspace.cursorAgentWorkspaceFor(thread);
+    final named = resolved.namedWorkspace?.trim();
     final folders = workspace.cursorAgentFoldersFor(thread);
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),

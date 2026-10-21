@@ -365,11 +365,13 @@ void main() {
   ) async {
     final (windows, host, workspace) = await _pumpApp(tester);
     final before = workspace.current!;
+    final own = workspace.cursorAgentFoldersFor(before);
     workspace.cursorAgentNamedWorkspace = 'hammer';
     workspace.cursorAgentExtraDirectories = const ['/extra/one', '/extra/two'];
     await tester.pump();
-    final folders = workspace.cursorAgentFoldersFor(before);
-    expect(folders, containsAll(['/extra/one', '/extra/two']));
+    // Kept chats stay on their own folders. The prefs are for a new chat.
+    expect(workspace.cursorAgentFoldersFor(before), own);
+    expect(own, isNot(contains('/extra/one')));
     expect(host.created, isEmpty);
     expect(windows.agentWindows, isEmpty);
 
@@ -386,7 +388,10 @@ void main() {
     expect(created, isNot(same(before)));
     expect(created.untouched, isTrue);
     expect(created.project.path, before.project.path);
-    expect(workspace.cursorAgentFoldersFor(created), folders);
+    expect(
+      workspace.cursorAgentFoldersFor(created),
+      containsAll([...own, '/extra/one', '/extra/two']),
+    );
     expect(workspace.cursorAgentNamedWorkspace, 'hammer');
     expect(windows.agentWindows, isEmpty);
     expect(host.created, isEmpty);
